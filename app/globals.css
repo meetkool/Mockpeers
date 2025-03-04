@@ -64,6 +64,10 @@
     @apply border-border;
   }
   body {
+    background-color: #f8f9fa; /* Light grayish background */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px; /* Adjusts the size of the grid */
     @apply bg-background text-foreground;
   }
 }
