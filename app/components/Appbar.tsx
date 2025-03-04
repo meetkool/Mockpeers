@@ -55,6 +55,20 @@ export function Appbar() {
                     </NavigationMenuLink>
                 </Link>
             </NavigationMenuItem> */}
+                        <NavigationMenuItem>
+                <Link href="/about" legacyBehavior passHref>
+                    <NavigationMenuLink className="text-white hover:text-gray-300 transition-all duration-200 px-3 py-2 rounded-md bg-gray-900 hover:bg-gray-700">
+                        About
+                    </NavigationMenuLink>
+                </Link>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+                <Link href="/interactions" legacyBehavior passHref>
+                    <NavigationMenuLink className="text-white hover:text-gray-300 transition-all duration-200 px-3 py-2 rounded-md bg-gray-900 hover:bg-gray-700">
+                    Interactions
+                    </NavigationMenuLink>
+                </Link>
+            </NavigationMenuItem>
         </NavigationMenuList>
     </NavigationMenu>
 
@@ -101,6 +115,7 @@ export function Appbar() {
         </div>
     );
 }
+
 
 
 
