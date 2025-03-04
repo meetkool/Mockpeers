@@ -6,7 +6,7 @@ $env:FILTER_BRANCH_SQUELCH_WARNING = 1
 $OLD_NAME = "Sinisterchilll"
 $OLD_EMAIL = "anucbs22@gmail.com"
 $NEW_NAME = "'meetkool'" # Note the single quotes around the name
-$NEW_EMAIL = "your.new@email.com"
+$NEW_EMAIL = "kooljoolj@gmail.com"
 
 # Create the filter-branch command
 $filterCommand = @"
