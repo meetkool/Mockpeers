@@ -18,9 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} min-h-screen`}>
-        <Provider>
+        <Provider >
           <div className="relative min-h-screen w-full flex flex-col">
-            {children}
+          {children}
           </div>
         </Provider>
       </body>
