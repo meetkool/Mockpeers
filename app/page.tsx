@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, Users, Calendar, Video } from "lucide-react";
 import Link from "next/link";
+import { Separator } from "@/components/ui/separator";
 
 export default function Home() {
   return (
@@ -79,6 +80,41 @@ export default function Home() {
           </Button>
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="border-t">
+        <div className="container flex flex-col items-center justify-between gap-4 py-10 md:h-24 md:flex-row md:py-0">
+          <div className="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+            <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
+              Built by{" "}
+              {/* <a
+                href="https://twitter.com/meetkool"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium underline underline-offset-4"
+              >
+                meetkool
+              </a> */}
+              . © {new Date().getFullYear()} Mockpeers. All rights reserved.
+            </p>
+          </div>
+          <div className="flex gap-4">
+            <Link
+              href="/terms"
+              className="text-sm text-muted-foreground underline underline-offset-4"
+            >
+              Terms
+            </Link>
+            <Separator orientation="vertical" className="h-4" />
+            <Link
+              href="/privacy"
+              className="text-sm text-muted-foreground underline underline-offset-4"
+            >
+              Privacy
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
