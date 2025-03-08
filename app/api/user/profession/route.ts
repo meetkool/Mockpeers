@@ -43,6 +43,16 @@ export async function POST(request: NextRequest) {
         const updatedUser = await prisma.user.update({
             where: { email: session.user.email },
             data: { profession },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                image: true,
+                profession: true,
+                createdAt: true,
+                updatedAt: true,
+                provider: true
+            }
         });
 
         return NextResponse.json(updatedUser);

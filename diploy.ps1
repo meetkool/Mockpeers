@@ -5,16 +5,19 @@ taskkill /F /IM node.exe
 npm cache clean --force
 
 # 3. Delete node_modules
-rm -r node_modules
+Remove-Item -Path node_modules -Recurse -Force -ErrorAction SilentlyContinue
 
 # 4. Delete package-lock.json
-rm package-lock.json
+Remove-Item package-lock.json -Force -ErrorAction SilentlyContinue
 
-# 5. Reinstall everything
+# 5. Delete .next directory
+Remove-Item -Path .next -Recurse -Force -ErrorAction SilentlyContinue
+
+# 6. Reinstall everything
 npm install
 
-# 6. Generate Prisma client
+# 7. Generate Prisma client
 npm run db:generate
 
-# 7. Run the full deploy
-# npm run db:full-deploy
+# 8. Start the development server
+npm run dev

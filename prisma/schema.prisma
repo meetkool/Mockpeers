@@ -18,13 +18,15 @@ model User {
   email      String   @unique
   name       String?
   image      String?
-  profession String? // Add this field
+  password   String?  // Optional password field
+  profession String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   provider   Provider
 }
 
 enum Provider {
+  EMAIL
   GOOGLE
   GITHUB
 }
