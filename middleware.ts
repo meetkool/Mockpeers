@@ -2,19 +2,19 @@ import { withAuth } from "next-auth/middleware";
 
 export default withAuth(
   function middleware(req) {
-    return null; // Let the layout handle the redirects
+    return null;
   },
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        // Allow access to login page without authentication
-        if (req.nextUrl.pathname === "/admin/login") {
-          return true;
-        }
-        // For all other admin routes, require admin role
+        // Only apply admin authentication rules to admin routes
         if (req.nextUrl.pathname.startsWith("/admin")) {
+          if (req.nextUrl.pathname === "/admin/login") {
+            return true;
+          }
           return token?.role === "ADMIN";
         }
+        // Allow all other routes
         return true;
       },
     },

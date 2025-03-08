@@ -10,11 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Appbar } from "../components/Appbar";
 
 const professions = [
-    { id: "software-engineer", label: "Software Engineer" },
-    { id: "frontend-developer", label: "Frontend Developer" },
-    { id: "backend-developer", label: "Backend Developer" },
-    { id: "fullstack-developer", label: "Fullstack Developer" },
-    { id: "devops-engineer", label: "DevOps Engineer" },
+    { id: "Software Engineer", label: "Software Engineer" },
+    { id: "Frontend Developer", label: "Frontend Developer" },
+    { id: "Backend Developer", label: "Backend Developer" },
+    { id: "Fullstack Developer", label: "Fullstack Developer" },
+    { id: "DevOps Engineer", label: "DevOps Engineer" },
 ];
 
 export default function GetStarted() {
@@ -22,18 +22,11 @@ export default function GetStarted() {
     const router = useRouter();
     const { data: session } = useSession();
 
-    useEffect(() => {
-        if (session?.user) {
-            router.replace('/dashboard');
-        }
-    }, [session, router]);
-
     const handleContinue = () => {
         if (profession) {
-            // Pass profession directly in the URL
-            const searchParams = new URLSearchParams();
-            searchParams.append('profession', profession);
-            router.push(`/api/auth/signin?${searchParams.toString()}`);
+            console.log("Selected profession:", profession); // Debug log
+            sessionStorage.setItem('selectedProfession', profession);
+            router.push(`/signup?profession=${encodeURIComponent(profession)}`);
         }
     };
 
