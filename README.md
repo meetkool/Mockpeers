@@ -48,7 +48,11 @@ This is a starter template for Next.js projects with built-in authentication, Ra
    ```bash
    npm run dev
    ```
-
+prisma 
+   1. For safe schema updates: ` npm run db:update`
+   2. To backup database: `npm run db:backup`
+   3. To restore database: `npm run db:restore`
+   4. To deploy migrations: ` npm run db:full-deploy`
 
 ## License
 

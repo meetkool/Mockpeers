@@ -8,17 +8,29 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "create-admin": "tsx scripts/create-admin.mts"
+    "create-admin": "tsx scripts/create-admin.mts",
+    "db:push": "prisma db push --accept-data-loss-warnings",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "db:safe-migrate": "tsx scripts/db/safe-migrate.ts",
+    "db:backup": "tsx scripts/db/backup-db.ts",
+    "db:restore": "tsx scripts/db/restore-db.ts",
+    "db:deploy": "prisma migrate deploy",
+    "db:update": "npm run db:safe-migrate && npm run db:generate",
+    "db:backup-all": "npm run db:backup && git add backups/* && git commit -m \"DB Backup $(date)\"",
+    "db:full-deploy": "npm run db:deploy && npm run db:generate"
   },
   "dependencies": {
     "@prisma/client": "^5.19.0",
     "@radix-ui/react-accordion": "^1.2.3",
+    "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-navigation-menu": "^1.2.5",
     "@radix-ui/react-separator": "^1.1.2",
     "@radix-ui/react-slot": "^1.1.0",
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.436.0",
     "next": "14.2.7",
     "next-auth": "^4.24.7",
@@ -35,10 +47,12 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "dotenv": "^16.4.7",
     "eslint": "^8",
     "eslint-config-next": "14.2.7",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.19.3",
     "typescript": "^5"
   }
 }

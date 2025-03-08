@@ -26,7 +26,7 @@ model User {
 enum Provider {
   GOOGLE
   GITHUB
- }
+}
 
 model Admin {
   id        String   @id @default(cuid())
@@ -35,4 +35,25 @@ model Admin {
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Schedule {
+  id          String         @id @default(cuid()) // Unique identifier for each schedule
+  title       String // Title of the interview/meeting
+  startTime   DateTime // When the interview starts
+  endTime     DateTime // When the interview ends
+  duration    Int // Duration in minutes
+  waitTime    Int            @default(15) // Added this line
+  counting    Int            @default(0) // Number of interviews scheduled for this slot
+  description String? // Optional description of the interview
+  meetingUrl  String? // Optional meeting URL (can be null initially)
+  status      ScheduleStatus @default(PENDING) // Current status of the schedule
+  createdAt   DateTime       @default(now()) // When this record was created
+  updatedAt   DateTime       @updatedAt // When this record was last updated
+}
+
+enum ScheduleStatus {
+  PENDING // Interview slot is created but not confirmed
+  CONFIRMED // Interview is confirmed
+  CANCELLED // Interview is cancelled
 }
