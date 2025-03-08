@@ -18,13 +18,16 @@
     "db:deploy": "prisma migrate deploy",
     "db:update": "npm run db:safe-migrate && npm run db:generate",
     "db:backup-all": "npm run db:backup && git add backups/* && git commit -m \"DB Backup $(date)\"",
-    "db:full-deploy": "npm run db:deploy && npm run db:generate"
+    "db:full-deploy": "npm run db:deploy && npm run db:generate",
+    "prisma:clean": "rimraf node_modules/.prisma && rimraf node_modules/@prisma && npm install && npm run db:generate"
   },
   "dependencies": {
     "@prisma/client": "^5.19.0",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-dialog": "^1.1.6",
+    "@radix-ui/react-label": "^2.1.2",
     "@radix-ui/react-navigation-menu": "^1.2.5",
+    "@radix-ui/react-radio-group": "^1.2.3",
     "@radix-ui/react-separator": "^1.1.2",
     "@radix-ui/react-slot": "^1.1.0",
     "bcryptjs": "^3.0.2",
@@ -51,8 +54,9 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.7",
     "postcss": "^8",
+    "rimraf": "^5.0.10",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.19.3",
-    "typescript": "^5"
+    "typescript": "^5.0.0"
   }
 }

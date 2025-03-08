@@ -79,32 +79,39 @@ export const authOptions: AuthOptions = {
     })
   ],
   callbacks: {
-    async signIn(params) {
-      // Only process OAuth logins (Google/GitHub)
-      if (params.account?.provider === 'credentials') {
-        return true;
-      }
-
+    async signIn({ user, account, profile }) {
       try {
-        const provider = params.account?.provider?.toUpperCase() as Provider;
+        if (!account || !profile) return true;
+        
+        const provider = account.provider.toUpperCase() as Provider;
+        
+        // Gets profession from URL parameters
+        const searchParams = new URLSearchParams(window.location.search);
+        const profession = searchParams.get('profession') || '';
+
+        // Updates or creates user with profession
         await prisma.user.upsert({
-          where: { email: params.user.email ?? '' },
+          where: { email: user.email ?? '' },
           update: {
-            name: params.user.name,
-            image: params.user.image,
-            provider: provider
+            name: user.name,
+            image: user.image,
+            provider: provider,
+            profession: profession
           },
           create: {
-            email: params.user.email ?? '',
-            name: params.user.name,
-            image: params.user.image,
-            provider: provider
+            email: user.email ?? '',
+            name: user.name,
+            image: user.image,
+            provider: provider,
+            profession: profession
           }
         });
+
+        return true;
       } catch (error) {
-        console.log(error)
+        console.error('Error in signIn callback:', error);
+        return true;
       }
-      return true
     },
     async session({ session, token }): Promise<ExtendedSession> {
       return {
