@@ -1,11 +1,27 @@
+"use client";
+
 import { Appbar } from "./components/Appbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, Users, Calendar, Video } from "lucide-react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  const handleGetStarted = () => {
+    if (session?.user) {
+      router.push('/dashboard');
+    } else {
+      router.push('/get-started');
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Appbar />
@@ -19,10 +35,8 @@ export default function Home() {
             Your platform for realistic technical interview practice. Connect with peers, practice coding interviews, and boost your confidence.
           </p>
           <div className="flex gap-4 justify-center">
-            <Button asChild size="lg">
-              <Link href="/practice">
-                Start Practice <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
+            <Button size="lg" onClick={handleGetStarted}>
+              {session?.user ? "Go to Dashboard" : "Get Started"} <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
             <Button variant="outline" size="lg" asChild>
               <Link href="/about">How It Works</Link>
@@ -75,8 +89,13 @@ export default function Home() {
           <p className="mb-6 text-gray-300">
             Join Mockpeers today and practice with a community of developers.
           </p>
-          <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-black">
-            <Link href="/practice">Get Started Now</Link>
+          <Button 
+            variant="outline" 
+            size="lg" 
+            className="border-white text-white hover:bg-white hover:text-black"
+            onClick={handleGetStarted}
+          >
+            {session?.user ? "Go to Dashboard" : "Get Started Now"}
           </Button>
         </div>
       </main>

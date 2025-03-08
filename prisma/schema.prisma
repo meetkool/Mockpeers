@@ -14,16 +14,19 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  image     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  provider  Provider
+  id         String   @id @default(cuid())
+  email      String   @unique
+  name       String?
+  image      String?
+  password   String?  // Optional password field
+  profession String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  provider   Provider
 }
 
 enum Provider {
+  EMAIL
   GOOGLE
   GITHUB
 }
