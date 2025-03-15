@@ -4,8 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 async function getUserStats() {
   try {
-    // Get total users count
-    const totalUsers = await prisma.user.count();
+    const total = await prisma.user.count();
     
     // Get users created in the last month
     const lastMonth = new Date();
@@ -20,19 +19,19 @@ async function getUserStats() {
     });
 
     // Calculate growth percentage
-    const growthPercentage = totalUsers > 0 
-      ? ((lastMonthUsers / totalUsers) * 100).toFixed(0)
+    const growthPercentage = total > 0 
+      ? ((lastMonthUsers / total) * 100).toFixed(0)
       : 0;
 
     return {
-      total: totalUsers,
+      total,
       growth: `${growthPercentage}%`
     };
   } catch (error) {
     console.error('Error fetching user stats:', error);
     return {
-      total: 0,
-      growth: '0%'
+      total: 'Error',
+      growth: 'N/A'
     };
   }
 }
@@ -51,8 +50,15 @@ export default async function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{userStats.total}</div>
-            <p className="text-xs text-muted-foreground">+{userStats.growth} from last month</p>
+            <div className="text-2xl font-bold">
+              {userStats.total === 'Error' ? 
+                <span className="text-red-500">Connection Error</span> : 
+                userStats.total
+              }
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {userStats.growth}
+            </p>
           </CardContent>
         </Card>
 

@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,14 +8,16 @@ datasource db {
 }
 
 model User {
-  id         String   @id @default(cuid())
-  email      String   @unique
+  id         String          @id @default(cuid())
+  email      String          @unique
   name       String?
   image      String?
-  password   String?  // Optional password field
+  password   String?
   profession String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  level      InterviewLevel?
+  meetings   UserMeeting[]
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
   provider   Provider
 }
 
@@ -41,22 +37,49 @@ model Admin {
 }
 
 model Schedule {
-  id          String         @id @default(cuid()) // Unique identifier for each schedule
-  title       String // Title of the interview/meeting
-  startTime   DateTime // When the interview starts
-  endTime     DateTime // When the interview ends
-  duration    Int // Duration in minutes
-  waitTime    Int            @default(15) // Added this line
-  counting    Int            @default(0) // Number of interviews scheduled for this slot
-  description String? // Optional description of the interview
-  meetingUrl  String? // Optional meeting URL (can be null initially)
-  status      ScheduleStatus @default(PENDING) // Current status of the schedule
-  createdAt   DateTime       @default(now()) // When this record was created
-  updatedAt   DateTime       @updatedAt // When this record was last updated
+  id          String         @id @default(cuid())
+  title       String
+  startTime   DateTime
+  endTime     DateTime
+  duration    Int
+  waitTime    Int            @default(15)
+  counting    Int            @default(0)
+  description String?
+  meetingUrl  String?
+  status      ScheduleStatus @default(PENDING)
+  startedAt   DateTime? // New field
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  UserMeeting UserMeeting[]
 }
 
 enum ScheduleStatus {
-  PENDING // Interview slot is created but not confirmed
-  CONFIRMED // Interview is confirmed
-  CANCELLED // Interview is cancelled
+  PENDING
+  BOOKED
+  COMPLETED
+  CANCELLED
+}
+
+enum InterviewLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+model UserMeeting {
+  id         String    @id @default(cuid())
+  userId     String
+  scheduleId String
+  role       String    @default("PARTICIPANT")
+  status     String    @default("JOINED")
+  joinedAt   DateTime  @default(now())
+  leftAt     DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schedule   Schedule  @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([scheduleId])
 }

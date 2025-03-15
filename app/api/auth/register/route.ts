@@ -9,17 +9,18 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   name: z.string().min(2),
+  profession: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, name } = registerSchema.parse(body);
+    const { email, password, name, profession } = registerSchema.parse(body);
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, email: true } // Only select needed fields
+      select: { id: true, email: true }
     });
 
     if (existingUser) {
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         name,
+        profession,
         provider: "EMAIL" as Provider,
       },
       select: {
@@ -45,13 +47,19 @@ export async function POST(request: NextRequest) {
         email: true,
         name: true,
         provider: true,
+        profession: true,
         createdAt: true,
         updatedAt: true,
       },
     });
 
     return NextResponse.json(
-      { message: "User created successfully", user },
+      { 
+        success: true,
+        message: "User created successfully", 
+        user,
+        redirectUrl: "/dashboard"
+      },
       { status: 201 }
     );
   } catch (error) {

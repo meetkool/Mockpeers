@@ -1,0 +1,50 @@
+{
+  "users": [
+    {
+      "id": "cm80axudv0002d1q0xo0iq1qn",
+      "email": "sapide8722@oziere.com",
+      "name": "kooljool",
+      "image": null,
+      "password": "$2b$10$ujfKG3saudhX8fY19aOSCuH.p/hnGXk875SHOInG9G1uYVd91Ogou",
+      "profession": "Software Engineer",
+      "createdAt": "2025-03-08T14:30:43.988Z",
+      "updatedAt": "2025-03-08T14:30:44.727Z",
+      "provider": "EMAIL"
+    },
+    {
+      "id": "cm809repp0001kvq87zzbmlna",
+      "email": "kooljoolj@gmail.com",
+      "name": "Meet Bhanushali",
+      "image": "https://lh3.googleusercontent.com/a/ACg8ocIPNt2VIKd5SmOP_qX8mOopBjy2qcwo7vVKQA61UcOni0ujMHI=s96-c",
+      "password": null,
+      "profession": "Frontend Developer",
+      "createdAt": "2025-03-08T13:57:44.093Z",
+      "updatedAt": "2025-03-10T05:54:18.372Z",
+      "provider": "GOOGLE"
+    },
+    {
+      "id": "cm809sj9d0002kvq8u3csk6cy",
+      "email": "lcs2021023@iiitl.ac.in",
+      "name": "Meet Bhanushali",
+      "image": "https://avatars.githubusercontent.com/u/96396841?v=4",
+      "password": null,
+      "profession": "Frontend Developer",
+      "createdAt": "2025-03-08T13:58:36.624Z",
+      "updatedAt": "2025-03-08T13:58:37.597Z",
+      "provider": "GITHUB"
+    },
+    {
+      "id": "cm80aw8al0001d1q0t3w9zd8a",
+      "email": "iitjeemeet@gmail.com",
+      "name": "meet bhanushali 95",
+      "image": "https://lh3.googleusercontent.com/a/ACg8ocKSsQY9XFqcKv-Adtkc613R4WdByXf_ukIXWlUJUA6BqMB2mwhf=s96-c",
+      "password": null,
+      "profession": "Software Engineer",
+      "createdAt": "2025-03-08T14:29:28.662Z",
+      "updatedAt": "2025-03-08T14:29:29.232Z",
+      "provider": "GOOGLE"
+    }
+  ],
+  "admin": [],
+  "schedule": []
+}

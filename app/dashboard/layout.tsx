@@ -3,12 +3,11 @@
 import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Book, User2, LayoutDashboard, Video, LogOut, Sun, Moon, Menu } from "lucide-react";
+import { Book, User2, LayoutDashboard, Video, LogOut, Menu } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-// import { useTheme } from "next-themes";
 import { signOut } from "next-auth/react";
 import {
   DropdownMenu,
@@ -51,7 +50,6 @@ export default function DashboardLayout({
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  // const { theme, setTheme } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
@@ -76,15 +74,21 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen flex dark:bg-gray-950">
-      {/* Sidebar with relative positioning */}
-      <div className="relative">
-        {/* Collapse button positioned absolutely on the right border */}
+      {/* Sidebar */}
+      <div 
+        className={cn(
+          "fixed top-0 left-0 h-screen z-30",
+          "transition-all duration-300",
+          isCollapsed ? "w-16" : "w-64"
+        )}
+      >
+        {/* Collapse button */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className={cn(
-            "absolute -right-4 top-1/2 -translate-y-1/2",
+            "absolute -right-3 top-6",
             "flex items-center justify-center",
-            "w-8 h-8 rounded-full",
+            "w-6 h-6 rounded-full",
             "bg-white dark:bg-gray-900",
             "border border-gray-200 dark:border-gray-800",
             "hover:bg-gray-100 dark:hover:bg-gray-800",
@@ -94,7 +98,7 @@ export default function DashboardLayout({
         >
           <Menu 
             className={cn(
-              "h-4 w-4 transition-transform duration-200",
+              "h-3 w-3 transition-transform duration-200",
               isCollapsed ? "rotate-180" : "rotate-0"
             )}
           />
@@ -102,16 +106,17 @@ export default function DashboardLayout({
 
         {/* Sidebar content */}
         <div className={cn(
-          "border-r bg-white dark:bg-gray-900 dark:border-gray-800 flex flex-col transition-all duration-300 h-screen",
-          isCollapsed ? "w-16" : "w-64"
+          "h-full",
+          "border-r bg-white dark:bg-gray-900 dark:border-gray-800",
+          "flex flex-col"
         )}>
-          <div className="p-4 flex items-center gap-2">
-            {!isCollapsed && <h1 className="text-xl font-semibold">Dashboard</h1>}
+          <div className="h-14 flex items-center px-4">
+            {!isCollapsed && <h1 className="text-lg font-semibold">Dashboard</h1>}
           </div>
           <Separator />
           
           {/* Navigation Items */}
-          <nav className="p-2 flex-1">
+          <nav className="flex-1 p-2">
             {sidebarItems.map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -119,7 +124,7 @@ export default function DashboardLayout({
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                    "flex items-center gap-3 px-3 py-2 mb-1 rounded-md text-sm font-medium transition-colors",
                     isActive
                       ? "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white"
                       : "text-gray-500 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-800"
@@ -133,43 +138,34 @@ export default function DashboardLayout({
             })}
           </nav>
 
-          {/* Bottom Section with Theme Toggle and Logout */}
+          {/* Bottom Section with Logout */}
           <div className="p-4 border-t dark:border-gray-800">
-            <div className={cn(
-              "flex items-center mb-4",
-              isCollapsed ? "flex-col gap-4" : "justify-between"
-            )}>
-              {/* <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                <span className="sr-only">Toggle theme</span>
-              </Button> */}
-              <Button
-                variant="ghost"
-                className={cn(
-                  "text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950",
-                  isCollapsed ? "p-2" : "gap-2"
-                )}
-                onClick={handleSignOut}
-                title={isCollapsed ? "Sign out" : undefined}
-              >
-                <LogOut className="h-4 w-4" />
-                {!isCollapsed && "Sign out"}
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              className={cn(
+                "w-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950",
+                isCollapsed ? "px-2" : "gap-2"
+              )}
+              onClick={handleSignOut}
+              title={isCollapsed ? "Sign out" : undefined}
+            >
+              <LogOut className="h-4 w-4" />
+              {!isCollapsed && "Sign out"}
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1">
-        <header className="h-14 border-b bg-white dark:bg-gray-900 dark:border-gray-800">
-          <div className="h-full px-6 flex items-center justify-between">
+      <div className={cn(
+        "flex-1",
+        isCollapsed ? "ml-16" : "ml-64"
+      )}>
+        <header className="h-14 border-b bg-white dark:bg-gray-900 dark:border-gray-800 fixed top-0 right-0 left-0 z-20">
+          <div className={cn(
+            "h-full px-6 flex items-center justify-between",
+            isCollapsed ? "ml-16" : "ml-64"
+          )}>
             <h2 className="text-lg font-medium">
               {sidebarItems.find((item) => item.href === pathname)?.title || "Dashboard"}
             </h2>
@@ -204,7 +200,7 @@ export default function DashboardLayout({
             </DropdownMenu>
           </div>
         </header>
-        <main className="p-6">{children}</main>
+        <main className="p-6 mt-14">{children}</main>
       </div>
     </div>
   );
