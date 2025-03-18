@@ -8,17 +8,19 @@ datasource db {
 }
 
 model User {
-  id         String          @id @default(cuid())
-  email      String          @unique
-  name       String?
-  image      String?
-  password   String?
-  profession String?
-  level      InterviewLevel?
-  meetings   UserMeeting[]
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
-  provider   Provider
+  id              String        @id @default(cuid())
+  email           String        @unique
+  name            String?
+  image           String?
+  password        String?
+  profession      String?
+  provider        Provider
+  phoneNumber     String?       @unique
+  country         String?
+  isPhoneVerified Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  userMeetings    UserMeeting[] // Changed from UserMeeting to userMeetings
 }
 
 enum Provider {
@@ -37,21 +39,21 @@ model Admin {
 }
 
 model Schedule {
-  id          String         @id @default(cuid())
-  title       String
-  startTime   DateTime
-  endTime     DateTime
-  duration    Int
-  waitTime    Int            @default(15)
-  counting    Int            @default(0)
-  description String?
-  meetingUrl  String?
-  status      ScheduleStatus @default(PENDING)
-  startedAt   DateTime? // New field
-  completedAt DateTime?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  UserMeeting UserMeeting[]
+  id           String         @id @default(cuid())
+  title        String
+  startTime    DateTime
+  endTime      DateTime
+  duration     Int
+  waitTime     Int            @default(15)
+  counting     Int            @default(0)
+  description  String?
+  meetingUrl   String?
+  status       ScheduleStatus @default(PENDING)
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  userMeetings UserMeeting[] // Changed from UserMeeting to userMeetings
 }
 
 enum ScheduleStatus {

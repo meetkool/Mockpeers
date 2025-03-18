@@ -57,3 +57,72 @@ prisma
 ## License
 
 This project is open source and available under the [MIT License](LICENSE).
+
+
+
+
+
+Based on the provided files, here are the main API and page routes in the application:
+
+API Routes:
+1. Authentication Related:
+- `/api/auth/[...nextauth]` - NextAuth authentication handling
+- `/api/auth/register` - User registration
+- `/api/auth/verify-phone/send` - Send phone verification code
+- `/api/auth/verify-phone/verify` - Verify phone code
+
+2. Admin Related:
+- `/api/admin/schedule/bulk` - Bulk schedule creation for admins
+- `/api/users` - User management (admin only)
+
+3. Schedule/Meeting Related:
+- `/api/schedule` - CRUD operations for schedules
+- `/api/schedule/available` - Get available schedules
+- `/api/schedule/book` - Book a schedule
+- `/api/schedule/join` - Join a scheduled meeting
+- `/api/schedule/status-update` - Update schedule statuses
+- `/api/meetings/[id]` - Get meeting details
+- `/api/meetings/[id]/start` - Start a meeting
+- `/api/meetings/[id]/end` - End a meeting
+
+4. User Related:
+- `/api/user/profession` - User profession management
+- `/api/order` - Payment order creation
+- `/api/verify` - Payment verification
+
+Page Routes:
+1. Public Pages:
+- `/` - Home page
+- `/login` - Login page
+- `/get-started` - Getting started page
+
+2. Admin Pages:
+- `/admin` - Admin dashboard
+- `/admin/login` - Admin login
+- `/admin/users` - User management
+- `/admin/interviews` - Interview management
+- `/admin/schedule` - Schedule management
+- `/admin/analytics` - Analytics
+- `/admin/feedback` - Feedback management
+- `/admin/settings` - Admin settings
+
+3. User Dashboard:
+- `/dashboard` - User dashboard
+- `/dashboard/interviews` - User interviews
+- `/dashboard/instructions` - Instructions
+- `/dashboard/profile` - User profile
+
+
+```mermaid
+graph TD
+    A[User Logs In] --> B{Phone Verified?}
+    B -->|Yes| C[Access Dashboard]
+    B -->|No| D[Redirect to Verify Phone Page]
+    D --> E[Enter Phone Number]
+    E --> F[Send Verification Code]
+    F --> G[Enter Verification Code]
+    G --> H{Code Valid?}
+    H -->|Yes| I[Update User as Verified]
+    I --> C
+    H -->|No| G
+```

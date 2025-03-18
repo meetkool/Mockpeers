@@ -46,21 +46,17 @@ export function SignUpForm() {
         email: formData.email,
         password: formData.password,
         redirect: false,
-        callbackUrl: "/dashboard"
       });
 
       if (signInResult?.error) {
         throw new Error("Authentication failed after registration");
       }
 
-      // 3. Show success message and redirect
-      toast.success("Account created successfully!");
-      
-      // Use replace to prevent going back to signup page
-      router.replace("/dashboard");
-      
+      // 3. Redirect to phone verification
+      router.replace("/verify-phone");
     } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+      toast.error(error.message);
+    } finally {
       setLoading(false);
     }
   };

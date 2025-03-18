@@ -7,24 +7,37 @@ import { prisma } from "@/lib/prisma"
 import { Provider } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
+// Extend the built-in session types
 interface ExtendedUser {
   id: string;
-  email: string;
-  name: string;
+  email: string | null;
+  name: string | null;
   role?: string;
+  isPhoneVerified?: boolean;
+  image?: string | null;
 }
 
 interface ExtendedSession extends Session {
   user: {
     id: string;
     role?: string;
+    isPhoneVerified?: boolean;
   } & DefaultSession["user"]
+}
+
+// Extend JWT type
+interface ExtendedJWT extends JWT {
+  id: string;
+  role?: string;
+  isPhoneVerified: boolean | undefined;
 }
 
 export const authOptions: AuthOptions = {
   session: {
-    strategy: "jwt", // Explicitly set JWT strategy
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: '/login',
     error: '/auth/error',
@@ -132,28 +145,54 @@ export const authOptions: AuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider === 'admin-login' || account?.provider === 'credentials') {
-        return true; // Skip database operation for credential-based login
-      }
-
       try {
-        // Only perform upsert for OAuth providers (Google, GitHub)
-        if (account?.provider) {
+        if (account?.provider === 'admin-login' || account?.provider === 'credentials') {
+          return true;
+        }
+
+        // For OAuth providers (Google, GitHub)
+        if (account?.provider && user.email) {
           const provider = account.provider.toUpperCase() as Provider;
-          await prisma.user.upsert({
-            where: { email: user.email ?? '' },
-            update: {
-              name: user.name,
-              image: user.image,
-              provider: provider,
-            },
-            create: {
-              email: user.email ?? '',
-              name: user.name,
-              image: user.image,
-              provider: provider,
-            }
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            select: { id: true, isPhoneVerified: true }
           });
+
+          if (existingUser) {
+            // Update existing user
+            const updatedUser = await prisma.user.update({
+              where: { id: existingUser.id },
+              data: {
+                name: user.name || null,
+                image: user.image || null,
+                provider: provider,
+              },
+              select: {
+                id: true,
+                isPhoneVerified: true,
+              }
+            });
+            (user as ExtendedUser).id = updatedUser.id;
+            (user as ExtendedUser).isPhoneVerified = updatedUser.isPhoneVerified;
+          } else {
+            // Create new user
+            const newUser = await prisma.user.create({
+              data: {
+                email: user.email,
+                name: user.name || null,
+                image: user.image || null,
+                provider: provider,
+                isPhoneVerified: false,
+              },
+              select: {
+                id: true,
+                isPhoneVerified: true,
+              }
+            });
+            (user as ExtendedUser).id = newUser.id;
+            (user as ExtendedUser).isPhoneVerified = newUser.isPhoneVerified;
+          }
+          return true;
         }
         return true;
       } catch (error) {
@@ -161,28 +200,42 @@ export const authOptions: AuthOptions = {
         return false;
       }
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }): Promise<ExtendedJWT> {
       if (user) {
-        token.role = user.role;
-        token.id = user.id;
+        return {
+          ...token,
+          id: user.id,
+          role: (user as ExtendedUser).role,
+          isPhoneVerified: (user as ExtendedUser).isPhoneVerified
+        };
       }
-      // Ensure admin role is set correctly
-      if (account?.provider === 'admin-login') {
-        token.role = 'ADMIN';
-      }
-      return token;
+      return {
+        ...token,
+        id: token.id as string,
+        role: token.role as string | undefined,
+        isPhoneVerified: token.isPhoneVerified as boolean | undefined
+      };
     },
     async session({ session, token }): Promise<ExtendedSession> {
       return {
         ...session,
         user: {
           ...session.user,
-          id: token.sub as string,
-          role: token.role as string
+          id: token.id as string,
+          role: token.role,
+          isPhoneVerified: token.isPhoneVerified as boolean | undefined
         }
-      }
+      };
     },
-    async redirect({ url, baseUrl }) {
+    async redirect({ 
+      url, 
+      baseUrl, 
+      token 
+    }: { 
+      url: string; 
+      baseUrl: string; 
+      token?: ExtendedJWT 
+    }) {
       // Normalize the URLs for comparison
       const normalizedUrl = url.toLowerCase();
       const normalizedBaseUrl = baseUrl.toLowerCase();
@@ -195,26 +248,28 @@ export const authOptions: AuthOptions = {
         return url;
       }
 
-      // Handle OAuth callbacks and login/signup
-      if (
-        normalizedUrl.includes('/api/auth/callback') ||
-        normalizedUrl.includes('/login') ||
-        normalizedUrl.includes('/signup')
-      ) {
+      // For OAuth and regular sign-in
+      if (normalizedUrl.includes('/api/auth/callback')) {
+        if (!(token as ExtendedJWT)?.isPhoneVerified) {
+          return `${baseUrl}/verify-phone`;
+        }
         return `${baseUrl}/dashboard`;
       }
 
-      // Handle root redirects
+      // If user is already verified, redirect to dashboard
+      if (normalizedUrl.includes('/login') || normalizedUrl.includes('/signup')) {
+        if ((token as ExtendedJWT)?.isPhoneVerified) {
+          return `${baseUrl}/dashboard`;
+        }
+        return `${baseUrl}/verify-phone`;
+      }
+
+      // Default redirects
       if (normalizedUrl === normalizedBaseUrl || normalizedUrl === `${normalizedBaseUrl}/`) {
         return `${baseUrl}/dashboard`;
       }
 
-      // Allow all other URLs that start with baseUrl
-      if (normalizedUrl.startsWith(normalizedBaseUrl)) {
-        return url;
-      }
-
-      return baseUrl;
+      return url;
     }
   }
 }
