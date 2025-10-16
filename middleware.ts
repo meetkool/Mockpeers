@@ -1,8 +1,6 @@
-import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import type { NextRequest } from 'next/server';
-import type { NextRequestWithAuth } from 'next-auth/middleware';
 import type { NextFetchEvent } from 'next/server';
 
 const PUBLIC_PATHS = [
@@ -46,55 +44,34 @@ async function phoneVerificationMiddleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // For all other protected routes
-  if (!token.isPhoneVerified) {
-    return NextResponse.redirect(new URL('/verify-phone', req.url));
-  }
-
+  // Allow access to all routes - phone verification is now optional
+  // Users can verify their phone from the dashboard when they want
   return NextResponse.next();
 }
 
 // Admin middleware
-const adminMiddleware = withAuth(
-  function middleware(req) {
-    const pathname = req.nextUrl.pathname;
-    const isAuthenticated = !!req.nextauth.token;
-    const isAdmin = req.nextauth.token?.role === "ADMIN";
-    const isAdminLoginPage = pathname === "/admin/login";
+async function adminMiddleware(req: NextRequest) {
+  const pathname = req.nextUrl.pathname;
+  const token = await getToken({ req });
 
-    if (isAdminLoginPage) {
-      if (isAdmin) {
-        return NextResponse.redirect(new URL("/admin", req.url));
-      }
-      return NextResponse.next();
+  // Allow access to admin login page
+  if (pathname === "/admin/login") {
+    // If already logged in as admin, redirect to admin dashboard
+    if (token?.role === "ADMIN") {
+      return NextResponse.redirect(new URL("/admin", req.url));
     }
-
-    if (pathname.startsWith("/admin")) {
-      if (!isAuthenticated || !isAdmin) {
-        return NextResponse.redirect(new URL("/admin/login", req.url));
-      }
-    }
-
     return NextResponse.next();
-  },
-  {
-    callbacks: {
-      authorized: ({ req, token }) => {
-        const pathname = req.nextUrl.pathname;
-        
-        if (pathname === "/admin/login") {
-          return true;
-        }
-
-        if (pathname.startsWith("/admin")) {
-          return !!token;
-        }
-
-        return true;
-      },
-    },
   }
-);
+
+  // For all other admin routes, check authentication
+  if (pathname.startsWith("/admin")) {
+    if (!token || token.role !== "ADMIN") {
+      return NextResponse.redirect(new URL("/admin/login", req.url));
+    }
+  }
+
+  return NextResponse.next();
+}
 
 // Main middleware handler
 export default async function middleware(
@@ -103,9 +80,9 @@ export default async function middleware(
 ) {
   const pathname = request.nextUrl.pathname;
 
-  // Handle admin routes
+  // Handle admin routes first
   if (pathname.startsWith('/admin')) {
-    return adminMiddleware(request as NextRequestWithAuth, event);
+    return adminMiddleware(request);
   }
   
   // Handle phone verification for other routes

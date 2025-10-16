@@ -18,19 +18,54 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
+    let userId: string;
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    // For admins, look up in Admin table and create/find corresponding User record
+    if (session.user.role === "ADMIN") {
+      const admin = await prisma.admin.findUnique({
+        where: { email: session.user.email! }
+      });
+
+      if (!admin) {
+        return NextResponse.json({ error: "Admin not found" }, { status: 404 });
+      }
+
+      // Check if admin has a corresponding User record (for joining meetings)
+      let adminUser = await prisma.user.findUnique({
+        where: { email: session.user.email! }
+      });
+
+      // Create a User record for the admin if it doesn't exist (for joining meetings only)
+      if (!adminUser) {
+        adminUser = await prisma.user.create({
+          data: {
+            email: session.user.email!,
+            name: admin.name,
+            provider: 'EMAIL',
+            isPhoneVerified: true, // Admins don't need phone verification
+          }
+        });
+      }
+
+      userId = adminUser.id;
+    } else {
+      // For regular users
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email! }
+      });
+
+      if (!user) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+
+      userId = user.id;
     }
 
     // Start a transaction
     const result = await prisma.$transaction(async (tx: any) => {
       const schedule = await tx.schedule.findUnique({
         where: { id: scheduleId },
-        include: { UserMeeting: true }
+        include: { userMeetings: true }
       });
 
       if (!schedule) {
@@ -57,7 +92,7 @@ export async function POST(req: NextRequest) {
       const existingMeeting = await tx.userMeeting.findFirst({
         where: {
           AND: [
-            { userId: user.id },
+            { userId: userId },
             { scheduleId: scheduleId }
           ]
         }
@@ -70,7 +105,7 @@ export async function POST(req: NextRequest) {
       // Create UserMeeting with role
       const userMeeting = await tx.userMeeting.create({
         data: {
-          user: { connect: { id: user.id } },
+          user: { connect: { id: userId } },
           schedule: { connect: { id: scheduleId } },
           role: isAdmin ? "ADMIN" : "PARTICIPANT"
         }
@@ -87,11 +122,11 @@ export async function POST(req: NextRequest) {
       return { userMeeting, schedule: updatedSchedule };
     });
 
-    // After successful join, check if we need to update status to BOOKED
-    if (!isAdmin && result.schedule.counting >= 2) {
+    // After successful join, check if we need to update status to BOOKING_STARTED
+    if (!isAdmin && result.schedule.counting >= 1) {
       await prisma.schedule.update({
         where: { id: result.schedule.id },
-        data: { status: "BOOKED" }
+        data: { status: "BOOKING_STARTED" }
       });
     }
 

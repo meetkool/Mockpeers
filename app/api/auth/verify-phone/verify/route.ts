@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../authOptions";
 import { prisma } from "@/lib/prisma";
-import twilio from "twilio";
-
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +14,12 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { isPhoneVerified: true, phoneNumber: true }
+      select: { 
+        isPhoneVerified: true, 
+        phoneNumber: true,
+        verificationCode: true,
+        verificationCodeExpiry: true
+      }
     });
 
     if (!user?.phoneNumber) {
@@ -30,19 +29,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify code using Twilio Verify
-    const verification = await client.verify.v2
-      .services(process.env.TWILIO_VERIFY_SERVICE_SID!)
-      .verificationChecks.create({
-        to: user.phoneNumber,
-        code
-      });
+    if (!user.verificationCode || !user.verificationCodeExpiry) {
+      return NextResponse.json(
+        { error: "No verification code found. Please request a new code." },
+        { status: 400 }
+      );
+    }
 
-    if (verification.status === "approved") {
-      // Update user's phone verification status
+    // Check if code has expired
+    if (new Date() > user.verificationCodeExpiry) {
+      return NextResponse.json(
+        { error: "Verification code has expired. Please request a new code." },
+        { status: 400 }
+      );
+    }
+
+    // Verify the code
+    if (user.verificationCode === code) {
+      // Update user's phone verification status and clear the code
       await prisma.user.update({
         where: { id: session.user.id },
-        data: { isPhoneVerified: true }
+        data: { 
+          isPhoneVerified: true,
+          verificationCode: null,
+          verificationCodeExpiry: null
+        }
       });
 
       return NextResponse.json({ success: true });

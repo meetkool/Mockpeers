@@ -18,25 +18,35 @@ export function AdminAuthForm() {
     setLoading(true);
 
     try {
+      console.log('Attempting admin login with:', email);
+      
+      // Use direct signIn without callbackUrl to avoid URL construction issues
       const result = await signIn("admin-login", {
         email,
         password,
         redirect: false,
       });
 
+      console.log('Sign in result:', result);
+
       if (result?.error) {
+        console.error('Login error:', result.error);
         toast.error("Authentication failed", {
           description: "Invalid email or password",
         });
+        setLoading(false);
       } else if (result?.ok) {
-        toast.success("Login successful");
-        router.push('/admin');
+        toast.success("Login successful! Redirecting...");
+        // Small delay to ensure session is set
+        setTimeout(() => {
+          window.location.href = '/admin';
+        }, 100);
       }
     } catch (error) {
+      console.error('Exception during login:', error);
       toast.error("Connection error", {
         description: "Please check your internet connection",
       });
-    } finally {
       setLoading(false);
     }
   };

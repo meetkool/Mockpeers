@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { 
   Select,
@@ -16,6 +17,7 @@ import { countryCodes } from "@/lib/constants/countryCodes";
 
 export function PhoneVerification() {
   const router = useRouter();
+  const { update } = useSession();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [countryCode, setCountryCode] = useState("+91");
   const [country, setCountry] = useState("IN");
@@ -76,8 +78,11 @@ export function PhoneVerification() {
 
       toast.success("Phone number verified successfully");
       
-      // Use router.push instead of window.location
-      router.push('/dashboard');
+      // Update the session to reflect the phone verification
+      await update();
+      
+      // Use hard redirect to ensure session is fully refreshed
+      window.location.href = '/dashboard';
     } catch (error: any) {
       toast.error(error.message);
     } finally {

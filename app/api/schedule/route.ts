@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/authOptions";
+import { ensureSchedules } from "@/lib/auto-schedule";
 
 export async function POST(request: NextRequest) {
   try {
@@ -58,9 +59,17 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Auto-create schedules if needed (runs in background)
+    ensureSchedules().catch(err => console.error('Background schedule creation failed:', err));
+
+    const now = new Date();
+
+    // Fetch available schedules
+    // Note: The 20-minute restriction is handled in the UI (BookingModal)
+    // Admins can manually control booking via the bookingOpen field
     const schedules = await prisma.schedule.findMany({
       include: {
-        UserMeeting: {
+        userMeetings: {
           include: {
             user: {
               select: {
@@ -74,9 +83,12 @@ export async function GET(request: NextRequest) {
       },
       where: {
         startTime: {
-          gte: new Date(), // Only future schedules
+          gte: now, // Must be in the future (not already started/ended)
         },
-        status: "PENDING",
+        status: {
+          in: ['PENDING', 'BOOKING_STARTED'], // Show both pending and booking started
+        },
+        bookingOpen: true, // Only show if admin hasn't manually closed bookings
       },
       orderBy: {
         startTime: 'asc',

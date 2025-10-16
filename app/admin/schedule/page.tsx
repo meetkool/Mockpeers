@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +21,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { format } from "date-fns";
-import { Users, UserPlus, UserMinus, ArrowRight } from "lucide-react";
+import { format, differenceInMinutes } from "date-fns";
+import { Users, ArrowRight, RefreshCw, Ban } from "lucide-react";
 import { toast } from "sonner";
 
 interface Schedule {
@@ -34,8 +35,9 @@ interface Schedule {
   counting: number;
   description: string;
   meetingUrl: string | null;
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
-  UserMeeting: {
+  status: 'PENDING' | 'BOOKING_STARTED' | 'ACTIVE' | 'DONE' | 'OVER' | 'CANCELLED';
+  bookingOpen: boolean;
+  userMeetings: {
     id: string;
     user: {
       id: string;
@@ -45,19 +47,53 @@ interface Schedule {
   }[];
 }
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
+const getStatusBadge = (status: Schedule['status']) => {
+  const variants = {
+    'PENDING': { variant: 'secondary' as const, className: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+    'BOOKING_STARTED': { variant: 'default' as const, className: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+    'ACTIVE': { variant: 'default' as const, className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
+    'DONE': { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200' },
+    'OVER': { variant: 'destructive' as const, className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+    'CANCELLED': { variant: 'outline' as const, className: 'bg-gray-50 text-gray-600' },
+  };
+
+  const config = variants[status];
+  return <Badge variant={config.variant} className={config.className}>{status}</Badge>;
+};
+
+const getBookingStatus = (schedule: Schedule) => {
+  const now = new Date();
+  const startTime = new Date(schedule.startTime);
+  const minutesToStart = differenceInMinutes(startTime, now);
+  
+  // If meeting has started or ended
+  if (schedule.status === 'ACTIVE' || schedule.status === 'DONE' || schedule.status === 'OVER') {
+    return { isOpen: false, label: 'Closed', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
+  }
+  
+  // Check if admin manually closed booking
+  if (schedule.bookingOpen === false) {
+    return { isOpen: false, label: 'Closed (Manual)', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
+  }
+  
+  // If bookingOpen is true, respect admin's decision (override time restrictions)
+  // Show status based on bookingOpen field only
+  if (schedule.bookingOpen === true) {
+    if (minutesToStart < 20) {
+      // Admin has explicitly reopened this meeting
+      return { isOpen: true, label: `Open (${minutesToStart}m)`, color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' };
+    }
+    return { isOpen: true, label: 'Open', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' };
+  }
+  
+  // Default: Closed
+  return { isOpen: false, label: 'Closed', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
+};
 
 export default function SchedulePage() {
   const router = useRouter();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [showParticipants, setShowParticipants] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
-  const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     startTime: '',
@@ -67,34 +103,22 @@ export default function SchedulePage() {
 
   const fetchSchedules = async () => {
     try {
-      const response = await fetch('/api/schedule');
+      const response = await fetch('/api/admin/schedule');
       const data = await response.json();
-      // Ensure UserMeeting is always an array even if it's not present
-      const schedulesWithUserMeeting = data.map((schedule: Schedule) => ({
+      // Ensure userMeetings is always an array even if it's not present
+      const schedulesWithUserMeetings = data.map((schedule: Schedule) => ({
         ...schedule,
-        UserMeeting: schedule.UserMeeting || []
+        userMeetings: schedule.userMeetings || []
       }));
-      setSchedules(schedulesWithUserMeeting);
+      setSchedules(schedulesWithUserMeetings);
     } catch (error) {
       console.error('Failed to fetch schedules:', error);
       setSchedules([]);
     }
   };
 
-  const fetchAvailableUsers = async () => {
-    try {
-      const response = await fetch('/api/users');
-      const data = await response.json();
-      setAvailableUsers(data);
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-      setAvailableUsers([]);
-    }
-  };
-
   useEffect(() => {
     fetchSchedules();
-    fetchAvailableUsers();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -123,51 +147,40 @@ export default function SchedulePage() {
     }
   };
 
-  const handleAddUser = async (scheduleId: string, userId: string) => {
-    try {
-      const response = await fetch(`/api/schedule/${scheduleId}/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      });
-
-      if (response.ok) {
-        fetchSchedules();
-        toast.success('User added to meeting');
-      } else {
-        throw new Error('Failed to add user');
-      }
-    } catch (error) {
-      console.error('Failed to add user:', error);
-      toast.error('Failed to add user to meeting');
-    }
-  };
-
-  const handleRemoveUser = async (scheduleId: string, userId: string) => {
-    try {
-      const response = await fetch(`/api/schedule/${scheduleId}/users/${userId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        fetchSchedules();
-        toast.success('User removed from meeting');
-      } else {
-        throw new Error('Failed to remove user');
-      }
-    } catch (error) {
-      console.error('Failed to remove user:', error);
-      toast.error('Failed to remove user from meeting');
-    }
-  };
-
-  const handleViewParticipants = (schedule: Schedule) => {
-    setSelectedSchedule(schedule);
-    setShowParticipants(true);
-  };
-
   const handleEnterRoom = (scheduleId: string) => {
     router.push(`/rooms/${scheduleId}`);
+  };
+
+  const handleReopenBooking = async (scheduleId: string) => {
+    try {
+      const res = await fetch(`/api/admin/schedule/${scheduleId}/reopen`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) throw new Error('Failed to reopen booking');
+
+      toast.success('Booking reopened successfully');
+      fetchSchedules();
+    } catch (error) {
+      console.error('Failed to reopen booking:', error);
+      toast.error('Failed to reopen booking');
+    }
+  };
+
+  const handleCloseBooking = async (scheduleId: string) => {
+    try {
+      const res = await fetch(`/api/admin/schedule/${scheduleId}/close`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) throw new Error('Failed to close booking');
+
+      toast.success('Booking closed successfully');
+      fetchSchedules();
+    } catch (error) {
+      console.error('Failed to close booking:', error);
+      toast.error('Failed to close booking');
+    }
   };
 
   return (
@@ -231,93 +244,70 @@ export default function SchedulePage() {
             <TableHead>Duration (mins)</TableHead>
             <TableHead>Participants</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Booking Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {schedules.map((schedule) => (
-            <TableRow key={schedule.id}>
-              <TableCell>{schedule.title}</TableCell>
-              <TableCell>{format(new Date(schedule.startTime), 'PPp')}</TableCell>
-              <TableCell>{format(new Date(schedule.endTime), 'PPp')}</TableCell>
-              <TableCell>{schedule.duration}</TableCell>
-              <TableCell>{schedule.UserMeeting?.length || 0}</TableCell>
-              <TableCell>{schedule.status}</TableCell>
-              <TableCell>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleViewParticipants(schedule)}
-                  >
-                    <Users className="h-4 w-4 mr-1" />
-                    Manage
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleEnterRoom(schedule.id)}
-                  >
-                    <ArrowRight className="h-4 w-4 mr-1" />
-                    Enter Room
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      {/* Participants Management Dialog */}
-      <Dialog open={showParticipants} onOpenChange={setShowParticipants}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Manage Participants</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="border rounded-lg p-4">
-              <h3 className="font-medium mb-2">Current Participants</h3>
-              <div className="space-y-2">
-                {selectedSchedule?.UserMeeting.map((um) => (
-                  <div key={um.id} className="flex items-center justify-between">
-                    <span>{um.user.name} ({um.user.email})</span>
+          {schedules.map((schedule) => {
+            const bookingStatus = getBookingStatus(schedule);
+            return (
+              <TableRow key={schedule.id}>
+                <TableCell>{schedule.title}</TableCell>
+                <TableCell>{format(new Date(schedule.startTime), 'PPp')}</TableCell>
+                <TableCell>{format(new Date(schedule.endTime), 'PPp')}</TableCell>
+                <TableCell>{schedule.duration}</TableCell>
+                <TableCell>{schedule.userMeetings?.length || 0}</TableCell>
+                <TableCell>{getStatusBadge(schedule.status)}</TableCell>
+                <TableCell>
+                  <Badge className={bookingStatus.color}>{bookingStatus.label}</Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-2 flex-wrap">
                     <Button
                       size="sm"
-                      variant="destructive"
-                      onClick={() => handleRemoveUser(selectedSchedule.id, um.user.id)}
+                      variant="outline"
+                      onClick={() => router.push(`/admin/schedule/${schedule.id}`)}
                     >
-                      <UserMinus className="h-4 w-4 mr-1" />
-                      Remove
+                      <Users className="h-4 w-4 mr-1" />
+                      Manage
                     </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="border rounded-lg p-4">
-              <h3 className="font-medium mb-2">Available Users</h3>
-              <div className="space-y-2">
-                {availableUsers
-                  .filter(user => !selectedSchedule?.UserMeeting
-                    .some(um => um.user.id === user.id))
-                  .map(user => (
-                    <div key={user.id} className="flex items-center justify-between">
-                      <span>{user.name} ({user.email})</span>
+                    {bookingStatus.isOpen && (schedule.status === 'PENDING' || schedule.status === 'BOOKING_STARTED') && (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => selectedSchedule && handleAddUser(selectedSchedule.id, user.id)}
+                        onClick={() => handleCloseBooking(schedule.id)}
+                        className="bg-red-50 hover:bg-red-100 text-red-700"
                       >
-                        <UserPlus className="h-4 w-4 mr-1" />
-                        Add
+                        <Ban className="h-4 w-4 mr-1" />
+                        Close Booking
                       </Button>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+                    )}
+                    {!bookingStatus.isOpen && (schedule.status === 'PENDING' || schedule.status === 'BOOKING_STARTED') && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleReopenBooking(schedule.id)}
+                        className="bg-blue-50 hover:bg-blue-100"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-1" />
+                        Reopen
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      onClick={() => handleEnterRoom(schedule.id)}
+                    >
+                      <ArrowRight className="h-4 w-4 mr-1" />
+                      Enter Room
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }

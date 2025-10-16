@@ -9,7 +9,10 @@ const client = twilio(
   process.env.TWILIO_AUTH_TOKEN
 );
 
-const VERIFICATION_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID;
+// Generate a random 6-digit verification code
+function generateVerificationCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,26 +48,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send verification code using Twilio Verify
-    const verification = await client.verify.v2
-      .services(VERIFICATION_SERVICE_SID!)
-      .verifications.create({
-        to: phoneNumber,
-        channel: "whatsapp" // or "sms" if you prefer
-      });
+    // Generate verification code
+    const code = generateVerificationCode();
+    const expiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Update user's phone number and country
+    // Send SMS using Twilio
+    const message = await client.messages.create({
+      body: `Your Mockpeers verification code is: ${code}. This code will expire in 10 minutes.`,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: phoneNumber
+    });
+
+    // Update user's phone number, country, and verification code
     await prisma.user.update({
       where: { id: session.user.id },
       data: { 
         phoneNumber,
-        country
+        country,
+        verificationCode: code,
+        verificationCodeExpiry: expiryTime
       }
     });
 
     return NextResponse.json({ 
       success: true,
-      status: verification.status 
+      status: message.status 
     });
   } catch (error) {
     console.error("Phone verification error:", error);

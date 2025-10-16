@@ -22,11 +22,22 @@ export async function GET() {
       }
     });
 
-    // 2. Update schedules to BOOKED when count >= 2
+    // 2. Fix BOOKING_STARTED schedules with 0 participants - reset to PENDING
+    const fixEmptyBookings = await prisma.schedule.updateMany({
+      where: {
+        counting: 0,
+        status: "BOOKING_STARTED"
+      },
+      data: {
+        status: "PENDING"
+      }
+    });
+
+    // 3. Update schedules to BOOKING_STARTED when count >= 1 (has participants)
     const bookedUpdates = await prisma.schedule.updateMany({
       where: {
         counting: {
-          gte: 2
+          gte: 1
         },
         status: "PENDING",
         startTime: {
@@ -34,11 +45,11 @@ export async function GET() {
         }
       },
       data: {
-        status: "BOOKED"
+        status: "BOOKING_STARTED"
       }
     });
 
-    // 3. Cancel status for users who didn't join past meetings
+    // 4. Cancel status for users who didn't join past meetings
     const pastSchedules = await prisma.schedule.findMany({
       where: {
         startTime: {
@@ -50,7 +61,7 @@ export async function GET() {
         }
       },
       include: {
-        UserMeeting: true
+        userMeetings: true
       }
     });
 
@@ -75,6 +86,7 @@ export async function GET() {
       message: "Status updates completed successfully",
       updates: {
         completedMeetings: completedUpdates.count,
+        fixedEmptyBookings: fixEmptyBookings.count,
         bookedMeetings: bookedUpdates.count,
         cancelledUserMeetings: cancelledMeetings
       }

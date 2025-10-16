@@ -42,6 +42,9 @@ This is a starter template for Next.js projects with built-in authentication, Ra
 6. Run Prisma migrations:
    ```bash
    npx prisma migrate dev
+
+   npx prisma migrate deploy
+   npx prisma generate
    ```
 
 7. Start the development server:

@@ -5,7 +5,7 @@ import { authOptions } from "@/app/api/auth/authOptions";
 
 export async function POST(
   _request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,7 +13,8 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const id = context.params?.id;
+    const params = await context.params;
+    const id = params.id;
     if (!id) {
       return NextResponse.json({ error: "Meeting ID is required" }, { status: 400 });
     }
@@ -21,7 +22,7 @@ export async function POST(
     const updatedMeeting = await prisma.schedule.update({
       where: { id: id },
       data: {
-        status: "BOOKED",
+        status: "ACTIVE",
         startedAt: new Date()
       }
     });

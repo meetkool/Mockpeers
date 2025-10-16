@@ -64,7 +64,10 @@ export const authOptions: AuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials): Promise<ExtendedUser | null> {
+        console.log('🔐 Admin login attempt:', credentials?.email);
+        
         if (!credentials?.email || !credentials?.password) {
+          console.log('❌ Missing credentials');
           throw new Error("Please enter both email and password");
         }
 
@@ -79,18 +82,25 @@ export const authOptions: AuthOptions = {
         });
 
         if (!admin || !admin.password) {
+          console.log('❌ Admin not found or no password');
           throw new Error("Invalid credentials");
         }
+
+        console.log('✅ Admin found:', admin.email);
 
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           admin.password
         );
 
+        console.log('Password valid:', isPasswordValid);
+
         if (!isPasswordValid) {
+          console.log('❌ Invalid password');
           throw new Error("Invalid credentials");
         }
 
+        console.log('✅ Admin login successful');
         return {
           id: admin.id,
           email: admin.email,
@@ -200,7 +210,7 @@ export const authOptions: AuthOptions = {
         return false;
       }
     },
-    async jwt({ token, user }): Promise<ExtendedJWT> {
+    async jwt({ token, user, trigger }): Promise<ExtendedJWT> {
       if (user) {
         return {
           ...token,
@@ -209,6 +219,24 @@ export const authOptions: AuthOptions = {
           isPhoneVerified: (user as ExtendedUser).isPhoneVerified
         };
       }
+      
+      // Re-fetch user data from database when session is updated
+      if (trigger === "update" && token.id) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { isPhoneVerified: true }
+        });
+        
+        if (dbUser) {
+          return {
+            ...token,
+            id: token.id as string,
+            role: token.role as string | undefined,
+            isPhoneVerified: dbUser.isPhoneVerified
+          };
+        }
+      }
+      
       return {
         ...token,
         id: token.id as string,
@@ -248,20 +276,14 @@ export const authOptions: AuthOptions = {
         return url;
       }
 
-      // For OAuth and regular sign-in
+      // For OAuth and regular sign-in - always go to dashboard
       if (normalizedUrl.includes('/api/auth/callback')) {
-        if (!(token as ExtendedJWT)?.isPhoneVerified) {
-          return `${baseUrl}/verify-phone`;
-        }
         return `${baseUrl}/dashboard`;
       }
 
-      // If user is already verified, redirect to dashboard
+      // If user is signing in, go to dashboard
       if (normalizedUrl.includes('/login') || normalizedUrl.includes('/signup')) {
-        if ((token as ExtendedJWT)?.isPhoneVerified) {
-          return `${baseUrl}/dashboard`;
-        }
-        return `${baseUrl}/verify-phone`;
+        return `${baseUrl}/dashboard`;
       }
 
       // Default redirects

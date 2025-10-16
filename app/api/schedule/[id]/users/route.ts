@@ -5,7 +5,7 @@ import { authOptions } from "@/app/api/auth/authOptions";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -14,8 +14,24 @@ export async function POST(
     }
 
     const { userId } = await request.json();
-    const { id: scheduleId } = params;
+    const { id: scheduleId } = await params;
 
+    // Check if user is already in this meeting
+    const existing = await prisma.userMeeting.findFirst({
+      where: {
+        userId,
+        scheduleId,
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "User is already in this meeting" },
+        { status: 400 }
+      );
+    }
+
+    // Create the user meeting
     const userMeeting = await prisma.userMeeting.create({
       data: {
         userId,
@@ -23,6 +39,26 @@ export async function POST(
         role: "PARTICIPANT",
       },
     });
+
+    // Update schedule counting and status
+    const updatedSchedule = await prisma.schedule.update({
+      where: { id: scheduleId },
+      data: {
+        counting: {
+          increment: 1,
+        },
+      },
+    });
+
+    // If this is the first participant, change status from PENDING to BOOKING_STARTED
+    if (updatedSchedule.counting === 1 && updatedSchedule.status === 'PENDING') {
+      await prisma.schedule.update({
+        where: { id: scheduleId },
+        data: {
+          status: 'BOOKING_STARTED',
+        },
+      });
+    }
 
     return NextResponse.json(userMeeting);
   } catch (error) {

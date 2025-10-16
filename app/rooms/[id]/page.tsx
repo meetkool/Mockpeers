@@ -39,7 +39,7 @@ interface InterviewSchedule {
   meetingUrl: string | null;
   status: 'PENDING' | 'BOOKED' | 'COMPLETED' | 'CANCELLED';
   counting: number;
-  UserMeeting: UserMeeting[];
+  userMeetings: UserMeeting[];
 }
 
 export default function RoomPage() {
@@ -224,7 +224,7 @@ export default function RoomPage() {
   const renderAdminControls = () => {
     if (!isAdmin) return null;
 
-    const isAdminJoined = schedule?.UserMeeting.some(
+    const isAdminJoined = schedule?.userMeetings.some(
       um => um.user.email === session?.user?.email
     );
 
@@ -301,10 +301,10 @@ export default function RoomPage() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              <h3 className="font-semibold">Participants ({schedule.UserMeeting.length})</h3>
+              <h3 className="font-semibold">Participants ({schedule.userMeetings.length})</h3>
             </div>
             <div className="space-y-2">
-              {schedule.UserMeeting.map((participant) => (
+              {schedule.userMeetings.map((participant) => (
                 <div key={participant.id} className="flex items-center gap-2">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={participant.user.image || ''} />

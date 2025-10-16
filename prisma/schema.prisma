@@ -8,19 +8,23 @@ datasource db {
 }
 
 model User {
-  id              String        @id @default(cuid())
-  email           String        @unique
-  name            String?
-  image           String?
-  password        String?
-  profession      String?
-  provider        Provider
-  phoneNumber     String?       @unique
-  country         String?
-  isPhoneVerified Boolean       @default(false)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  userMeetings    UserMeeting[] // Changed from UserMeeting to userMeetings
+  id                    String        @id @default(cuid())
+  email                 String        @unique
+  name                  String?
+  image                 String?
+  password              String?
+  profession            String?
+  provider              Provider
+  phoneNumber           String?       @unique
+  country               String?
+  isPhoneVerified       Boolean       @default(false)
+  verificationCode      String?
+  verificationCodeExpiry DateTime?
+  preferredMode         String?       // PEER, AI, FRIEND
+  onboardingCompleted   Boolean       @default(false)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  userMeetings          UserMeeting[] // Changed from UserMeeting to userMeetings
 }
 
 enum Provider {
@@ -49,6 +53,7 @@ model Schedule {
   description  String?
   meetingUrl   String?
   status       ScheduleStatus @default(PENDING)
+  bookingOpen  Boolean        @default(true) // Admin can manually open/close bookings
   startedAt    DateTime?
   completedAt  DateTime?
   createdAt    DateTime       @default(now())
@@ -57,10 +62,12 @@ model Schedule {
 }
 
 enum ScheduleStatus {
-  PENDING
-  BOOKED
-  COMPLETED
-  CANCELLED
+  PENDING          // Waiting for first booking
+  BOOKING_STARTED  // Has bookings, accepting more
+  ACTIVE           // Meeting is happening now
+  DONE             // Successfully completed
+  OVER             // Time passed, no bookings
+  CANCELLED        // Admin cancelled
 }
 
 enum InterviewLevel {
