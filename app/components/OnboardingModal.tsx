@@ -4,35 +4,114 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Bot, UserPlus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Users, Bot, UserPlus, GraduationCap, Code, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 interface OnboardingModalProps {
   open: boolean;
   onComplete: () => void;
 }
 
+interface OnboardingData {
+  // experienceLevel removed - now chosen per-meeting during booking
+  profession?: string;
+  email?: string;
+  leetcodeUsername?: string;
+  interviewLanguages: string[];
+  readLanguages: string[];
+  questionDifficulties: string[];
+}
+
+const PROGRAMMING_LANGUAGES = [
+  'C#', 'C++', 'Go', 'Java', 'JavaScript', 'Kotlin', 'Python', 'Swift', 'TypeScript'
+];
+
+const DIFFICULTIES = ['Easy', 'Medium', 'Hard', 'Very Hard'];
+
+const PROFESSIONS = [
+  'Software Engineer',
+  'Frontend Developer',
+  'Backend Developer',
+  'Fullstack Developer',
+  'DevOps Engineer',
+  'Data Scientist',
+  'ML Engineer',
+  'QA Engineer',
+  'Product Manager',
+  'Other'
+];
+
 export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
   const [loading, setLoading] = useState(false);
+  // Removed experience step - users choose experience level when booking
+  const [formData, setFormData] = useState<OnboardingData>({
+    interviewLanguages: [],
+    readLanguages: [],
+    questionDifficulties: [],
+  });
   const router = useRouter();
+  const { data: session } = useSession();
 
-  const handleModeSelect = async (mode: 'PEER' | 'AI' | 'FRIEND') => {
+  const toggleLanguage = (language: string, type: 'interview' | 'read') => {
+    const key = type === 'interview' ? 'interviewLanguages' : 'readLanguages';
+    setFormData(prev => ({
+      ...prev,
+      [key]: prev[key].includes(language)
+        ? prev[key].filter(l => l !== language)
+        : [...prev[key], language]
+    }));
+  };
+
+  const toggleDifficulty = (difficulty: string) => {
+    setFormData(prev => ({
+      ...prev,
+      questionDifficulties: prev.questionDifficulties.includes(difficulty)
+        ? prev.questionDifficulties.filter(d => d !== difficulty)
+        : [...prev.questionDifficulties, difficulty]
+    }));
+  };
+
+  const handleSubmit = async () => {
+    // Validation
+    if (!formData.profession) {
+      toast.error('Please select your profession');
+      return;
+    }
+
+    if (formData.interviewLanguages.length === 0) {
+      toast.error('Please select at least one language you want to interview in');
+      return;
+    }
+
+    if (formData.readLanguages.length === 0) {
+      toast.error('Please select at least one language you can read');
+      return;
+    }
+
+    if (formData.questionDifficulties.length === 0) {
+      toast.error('Please select at least one question difficulty');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch('/api/user/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preferredMode: mode })
+        body: JSON.stringify(formData)
       });
 
-      if (!res.ok) throw new Error('Failed to save preference');
+      if (!res.ok) throw new Error('Failed to save preferences');
 
-      toast.success('Preference saved! Welcome to Mockpeers 🎉');
+      toast.success('Profile preferences saved! Welcome to Mockpeers 🎉');
       onComplete();
       router.refresh();
     } catch (error) {
-      toast.error('Failed to save preference');
+      toast.error('Failed to save preferences');
     } finally {
       setLoading(false);
     }
@@ -41,11 +120,10 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
   const handleSkip = async () => {
     setLoading(true);
     try {
-      // Mark onboarding as completed without setting a preference
       const res = await fetch('/api/user/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preferredMode: null })
+        body: JSON.stringify({ skip: true })
       });
 
       if (!res.ok) throw new Error('Failed to skip');
@@ -59,136 +137,166 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
     }
   };
 
-  const handleClose = () => {
-    // When closing with X button, mark as skipped
-    handleSkip();
-  };
-
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleSkip()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">Welcome to Mockpeers! 🎉</DialogTitle>
-          <DialogDescription className="text-base">
-            Choose your preferred practice mode to get started (you can skip this for now)
-          </DialogDescription>
-        </DialogHeader>
+        {/* Removed experience level step - now chosen when booking meetings */}
+        <>
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Tell us about yourself</DialogTitle>
+              <DialogDescription className="text-base">
+                This helps us match you with the right interview partners
+              </DialogDescription>
+            </DialogHeader>
 
-        <div className="grid md:grid-cols-3 gap-4 mt-4">
-          {/* Practice with Peers */}
-          <Card 
-            className="cursor-pointer hover:shadow-lg transition-all hover:border-blue-500" 
-            onClick={() => !loading && handleModeSelect('PEER')}
-          >
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center mb-3">
-                <Users className="h-6 w-6 text-blue-600 dark:text-blue-300" />
+            <div className="space-y-6 mt-4">
+              {/* Profession */}
+              <div className="space-y-3">
+                <Label>
+                  What&apos;s your profession? <span className="text-red-500">*</span>
+                </Label>
+                <div className="space-y-2">
+                  {PROFESSIONS.map(profession => (
+                    <label
+                      key={profession}
+                      className="flex items-center space-x-3 cursor-pointer group"
+                    >
+                      <input
+                        type="radio"
+                        name="profession"
+                        value={profession}
+                        checked={formData.profession === profession}
+                        onChange={(e) => setFormData(prev => ({ ...prev, profession: e.target.value }))}
+                        className="w-4 h-4 text-primary border-gray-300 focus:ring-primary"
+                      />
+                      <span className="text-sm group-hover:text-primary transition-colors">
+                        {profession}
+                      </span>
+                    </label>
+                  ))}
+                </div>
               </div>
-              <CardTitle className="text-lg">Practice with Peers</CardTitle>
-              <CardDescription className="text-sm">
-                Connect with other developers
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-1.5 text-xs text-muted-foreground mb-4">
-                <li>• Match with similar experience</li>
-                <li>• Give and receive feedback</li>
-                <li>• Build your network</li>
-              </ul>
-              <Button 
-                className="w-full" 
-                disabled={loading}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleModeSelect('PEER');
-                }}
-              >
-                {loading ? 'Setting up...' : 'Choose Peers'}
-              </Button>
-            </CardContent>
-          </Card>
 
-          {/* Practice with AI */}
-          <Card 
-            className="cursor-pointer hover:shadow-lg transition-all hover:border-purple-500 border-2 border-purple-300" 
-            onClick={() => !loading && handleModeSelect('AI')}
-          >
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center mb-3">
-                <Bot className="h-6 w-6 text-purple-600 dark:text-purple-300" />
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder={session?.user?.email || 'your@email.com'}
+                  value={formData.email || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  disabled={!!session?.user?.email}
+                />
+                <p className="text-xs text-muted-foreground">
+                  We&apos;ll send interview status updates to this email address.
+                </p>
               </div>
-              <CardTitle className="text-lg">Practice with AI</CardTitle>
-              <CardDescription className="text-sm">
-                Premium AI-powered interviews
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-1.5 text-xs text-muted-foreground mb-4">
-                <li>• Realistic AI interviewer</li>
-                <li>• Instant feedback</li>
-                <li>• Available 24/7</li>
-              </ul>
-              <Button 
-                className="w-full bg-purple-600 hover:bg-purple-700" 
-                disabled={loading}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleModeSelect('AI');
-                }}
-              >
-                {loading ? 'Setting up...' : 'Choose AI'}
-              </Button>
-            </CardContent>
-          </Card>
 
-          {/* Practice with Friend */}
-          <Card 
-            className="cursor-pointer hover:shadow-lg transition-all hover:border-green-500" 
-            onClick={() => !loading && handleModeSelect('FRIEND')}
-          >
-            <CardHeader>
-              <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center mb-3">
-                <UserPlus className="h-6 w-6 text-green-600 dark:text-green-300" />
+              {/* LeetCode Username */}
+              <div className="space-y-2">
+                <Label htmlFor="leetcode">LeetCode Username</Label>
+                <Input
+                  id="leetcode"
+                  placeholder="Your LeetCode username"
+                  value={formData.leetcodeUsername || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, leetcodeUsername: e.target.value }))}
+                />
               </div>
-              <CardTitle className="text-lg">Practice with a Friend</CardTitle>
-              <CardDescription className="text-sm">
-                Invite someone you know
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-1.5 text-xs text-muted-foreground mb-4">
-                <li>• Send direct invitations</li>
-                <li>• Comfortable environment</li>
-                <li>• Custom format</li>
-              </ul>
-              <Button 
-                className="w-full" 
-                variant="outline" 
-                disabled={loading}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleModeSelect('FRIEND');
-                }}
-              >
-                {loading ? 'Setting up...' : 'Choose Friend'}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
 
-        <div className="flex flex-col items-center gap-2 mt-4">
-          <Button
-            variant="ghost"
-            onClick={handleSkip}
-            disabled={loading}
-            className="text-sm"
-          >
-            Skip for Now
-          </Button>
-          <p className="text-xs text-center text-muted-foreground">
-            You can change this anytime from your profile settings
-          </p>
-        </div>
+              {/* Interview Languages */}
+              <div className="space-y-2">
+                <Label>
+                  Language(s) you want to interview in <span className="text-red-500">*</span>
+                </Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  You&apos;ll be paired with someone who can read one of these languages.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {PROGRAMMING_LANGUAGES.map(lang => (
+                    <Button
+                      key={lang}
+                      type="button"
+                      variant={formData.interviewLanguages.includes(lang) ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => toggleLanguage(lang, 'interview')}
+                    >
+                      {lang}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Read Languages */}
+              <div className="space-y-2">
+                <Label>
+                  Language(s) you can read <span className="text-red-500">*</span>
+                </Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  You&apos;ll be paired with someone who wants to interview in one of these languages. 
+                  Only select languages that you&apos;re genuinely comfortable reading.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {PROGRAMMING_LANGUAGES.map(lang => (
+                    <Button
+                      key={lang}
+                      type="button"
+                      variant={formData.readLanguages.includes(lang) ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => toggleLanguage(lang, 'read')}
+                    >
+                      {lang}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Question Difficulties */}
+              <div className="space-y-2">
+                <Label>
+                  Question difficulties that you're willing to get <span className="text-red-500">*</span>
+                </Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  We recommend against selecting Easy questions, unless you&apos;re a beginner, 
+                  because real coding interviews usually consist of Medium-or-harder questions.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {DIFFICULTIES.map(diff => (
+                    <Button
+                      key={diff}
+                      type="button"
+                      variant={formData.questionDifficulties.includes(diff) ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => toggleDifficulty(diff)}
+                    >
+                      {diff}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading ? 'Saving...' : 'Complete Setup'}
+              </Button>
+            </div>
+
+            <div className="flex justify-center mt-2">
+              <Button
+                variant="ghost"
+                onClick={handleSkip}
+                disabled={loading}
+                className="text-sm"
+              >
+                Skip for Now
+              </Button>
+            </div>
+          </>
       </DialogContent>
     </Dialog>
   );

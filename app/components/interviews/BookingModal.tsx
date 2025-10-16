@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { 
   Code, 
   Network, 
@@ -19,7 +20,10 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  BookOpen
+  BookOpen,
+  AlertCircle,
+  Edit,
+  User
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -135,6 +139,8 @@ export function BookingModal({ open, onClose, onBookingSuccess }: BookingModalPr
   const [selectedLevel, setSelectedLevel] = useState<ExperienceLevel | null>(null);
   const [selectedSchedule, setSelectedSchedule] = useState<any>(null);
   const [availableSchedules, setAvailableSchedules] = useState<any[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   // Helper function to check if user has already booked a schedule
   const isUserAlreadyBooked = (schedule: any) => {
@@ -159,6 +165,54 @@ export function BookingModal({ open, onClose, onBookingSuccess }: BookingModalPr
 
   const handleLevelSelect = async (level: ExperienceLevel) => {
     setSelectedLevel(level);
+    setProfileLoading(true);
+    try {
+      // Experience level is now per-meeting, not saved to profile
+      // Just fetch the profile to check other required fields
+      const res = await fetch('/api/user/profile');
+      if (res.ok) {
+        const profile = await res.json();
+        setUserProfile(profile);
+        toast.success(`Experience level set to ${level === 'BEGINNER' ? 'Beginner' : level === 'INTERMEDIATE' ? 'Intermediate' : 'Advanced'} for this interview`);
+      }
+      setStep(4); // Go to profile review step
+    } catch (error) {
+      toast.error('Failed to load profile');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  // Check if profile is complete
+  const isProfileComplete = () => {
+    if (!userProfile) return false;
+    return !!(
+      userProfile.profession &&
+      // experienceLevel removed - chosen per-meeting
+      userProfile.interviewLanguages?.length > 0 &&
+      userProfile.readLanguages?.length > 0 &&
+      userProfile.questionDifficulties?.length > 0
+    );
+  };
+
+  // Get missing fields
+  const getMissingFields = () => {
+    const missing = [];
+    if (!userProfile) return ['Profile data'];
+    if (!userProfile.profession) missing.push('Profession');
+    // experienceLevel removed - chosen when booking
+    if (!userProfile.interviewLanguages?.length) missing.push('Interview Languages');
+    if (!userProfile.readLanguages?.length) missing.push('Read Languages');
+    if (!userProfile.questionDifficulties?.length) missing.push('Question Difficulties');
+    return missing;
+  };
+
+  const handleContinueFromProfile = async () => {
+    if (!isProfileComplete()) {
+      toast.error('Please complete all required profile fields');
+      return;
+    }
+    
     setLoading(true);
     try {
       // Fetch available schedules
@@ -167,7 +221,7 @@ export function BookingModal({ open, onClose, onBookingSuccess }: BookingModalPr
       if (Array.isArray(data)) {
         setAvailableSchedules(data);
       }
-      setStep(4);
+      setStep(5); // Go to time selection
     } catch (error) {
       toast.error('Failed to load available times');
     } finally {
@@ -175,9 +229,14 @@ export function BookingModal({ open, onClose, onBookingSuccess }: BookingModalPr
     }
   };
 
+  const handleGoToProfile = () => {
+    router.push('/dashboard/profile');
+    handleClose();
+  };
+
   const handleScheduleSelect = (schedule: any) => {
     setSelectedSchedule(schedule);
-    setStep(5);
+    setStep(6); // Changed from 5 to 6 since we added profile review step
   };
 
   const handleConfirmBooking = async () => {
@@ -349,8 +408,159 @@ export function BookingModal({ open, onClose, onBookingSuccess }: BookingModalPr
           </>
         )}
 
-        {/* Step 4: Time Selection */}
+        {/* Step 4: Profile Review */}
         {step === 4 && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Review Your Profile</DialogTitle>
+              <p className="text-sm text-muted-foreground">Make sure your information is up-to-date before scheduling</p>
+            </DialogHeader>
+
+            {profileLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <div className="space-y-4 mt-4">
+                {/* Show warning if profile incomplete */}
+                {!isProfileComplete() && (
+                  <Card className="border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-900">
+                    <CardContent className="flex gap-3 pt-6">
+                      <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-2">
+                        <p className="text-sm font-semibold text-red-900 dark:text-red-200">
+                          Profile Incomplete
+                        </p>
+                        <p className="text-sm text-red-800 dark:text-red-300">
+                          Please complete the following fields before scheduling an interview:
+                        </p>
+                        <ul className="list-disc list-inside text-sm text-red-800 dark:text-red-300 space-y-1">
+                          {getMissingFields().map(field => (
+                            <li key={field}>{field}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Profile Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      Basic Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Name</Label>
+                        <p className="text-sm font-medium">{userProfile?.name || 'Not set'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Email</Label>
+                        <p className="text-sm font-medium">{userProfile?.email || 'Not set'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">Profession {!userProfile?.profession && <span className="text-red-500">*</span>}</Label>
+                        <p className={`text-sm font-medium ${!userProfile?.profession ? 'text-red-500' : ''}`}>
+                          {userProfile?.profession || 'Not set'}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground text-xs">LeetCode Username</Label>
+                        <p className="text-sm font-medium">{userProfile?.leetcodeUsername || 'Not set'}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Interview Preferences */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Interview Preferences</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Experience Level removed - now chosen when booking */}
+
+                    <div>
+                      <Label className="text-muted-foreground text-xs">
+                        Interview Languages {(!userProfile?.interviewLanguages?.length) && <span className="text-red-500">*</span>}
+                      </Label>
+                      {userProfile?.interviewLanguages?.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {userProfile.interviewLanguages.map((lang: string) => (
+                            <Badge key={lang} variant="secondary">{lang}</Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-red-500 mt-1">Not set</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label className="text-muted-foreground text-xs">
+                        Read Languages {(!userProfile?.readLanguages?.length) && <span className="text-red-500">*</span>}
+                      </Label>
+                      {userProfile?.readLanguages?.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {userProfile.readLanguages.map((lang: string) => (
+                            <Badge key={lang} variant="secondary">{lang}</Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-red-500 mt-1">Not set</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label className="text-muted-foreground text-xs">
+                        Question Difficulties {(!userProfile?.questionDifficulties?.length) && <span className="text-red-500">*</span>}
+                      </Label>
+                      {userProfile?.questionDifficulties?.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {userProfile.questionDifficulties.map((diff: string) => (
+                            <Badge key={diff} variant="outline">{diff}</Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-red-500 mt-1">Not set</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-3">
+                  {isProfileComplete() ? (
+                    <>
+                      <Button onClick={handleContinueFromProfile} disabled={loading} className="w-full">
+                        {loading ? 'Loading...' : 'Continue to Time Selection'}
+                      </Button>
+                      <Button variant="outline" onClick={handleGoToProfile} className="w-full">
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Profile
+                      </Button>
+                    </>
+                  ) : (
+                    <Button onClick={handleGoToProfile} className="w-full">
+                      <Edit className="h-4 w-4 mr-2" />
+                      Complete Profile to Continue
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between mt-4">
+              <Button variant="outline" onClick={handleBack}>Back</Button>
+            </div>
+          </>
+        )}
+
+        {/* Step 5: Time Selection */}
+        {step === 5 && (
           <>
             <DialogHeader>
               <DialogTitle className="text-2xl">Select a time to practice</DialogTitle>
@@ -413,8 +623,8 @@ export function BookingModal({ open, onClose, onBookingSuccess }: BookingModalPr
           </>
         )}
 
-        {/* Step 5: Confirmation */}
-        {step === 5 && selectedSchedule && (
+        {/* Step 6: Confirmation */}
+        {step === 6 && selectedSchedule && (
           <>
             <div className="text-center py-6">
               <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-4">

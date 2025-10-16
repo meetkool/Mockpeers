@@ -17,6 +17,11 @@ export async function POST(
     const { interviewType, practiceType, experienceLevel } = await request.json();
     const { id: scheduleId } = await params;
 
+    // Validate experience level if provided
+    if (experienceLevel && !['BEGINNER', 'INTERMEDIATE', 'ADVANCED'].includes(experienceLevel)) {
+      return NextResponse.json({ error: 'Invalid experience level' }, { status: 400 });
+    }
+
     // Check if schedule exists and is available
     const schedule = await prisma.schedule.findUnique({
       where: { id: scheduleId },
@@ -51,13 +56,14 @@ export async function POST(
       return NextResponse.json({ error: 'You have already booked this interview' }, { status: 400 });
     }
 
-    // Create user meeting
+    // Create user meeting with experience level
     const userMeeting = await prisma.userMeeting.create({
       data: {
         userId: session.user.id,
         scheduleId: scheduleId,
         role: 'PARTICIPANT',
         status: 'JOINED',
+        experienceLevel: experienceLevel || null, // Save chosen level for THIS meeting
       },
       include: {
         schedule: true
