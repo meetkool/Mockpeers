@@ -1,5 +1,11 @@
+import { Suspense } from "react";
 import { UserAuthForm } from "@/app/components/auth/UserAuthForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+
+function SignUpForm() {
+  return <UserAuthForm mode="signup" />;
+}
 
 export default function SignUpPage() {
   return (
@@ -9,7 +15,13 @@ export default function SignUpPage() {
           <CardTitle>Create an Account</CardTitle>
         </CardHeader>
         <CardContent>
-          <UserAuthForm mode="signup" />
+          <Suspense fallback={
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          }>
+            <SignUpForm />
+          </Suspense>
         </CardContent>
       </Card>
     </div>

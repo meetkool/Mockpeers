@@ -71,3 +71,23 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom scrollbar styles for participant tables */
+@layer utilities {
+  .overflow-y-auto::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-gray-800 rounded-lg;
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500;
+  }
+
+  /* Smooth scrolling */
+  .overflow-y-auto {
+    scroll-behavior: smooth;
+  }
+}

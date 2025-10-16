@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 import { countryCodes } from "@/lib/constants/countryCodes";
 
 export function PhoneVerification() {
@@ -24,14 +26,18 @@ export function PhoneVerification() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
+  const [error, setError] = useState("");
+  const [devCode, setDevCode] = useState("");
 
   const handleSendCode = async () => {
     if (!phoneNumber || phoneNumber.length < 8) {
+      setError("Please enter a valid phone number");
       toast.error("Please enter a valid phone number");
       return;
     }
 
     setLoading(true);
+    setError(""); // Clear previous errors
     try {
       const res = await fetch("/api/auth/verify-phone/send", {
         method: "POST",
@@ -44,13 +50,21 @@ export function PhoneVerification() {
 
       const data = await res.json();
       if (!res.ok) {
+        setError(data.error || "Failed to send verification code");
         throw new Error(data.error);
       }
 
+      // Check if code is returned (development mode)
+      if (data.code) {
+        setDevCode(data.code);
+        toast.success(`Development Mode: Your code is ${data.code}`);
+      } else {
+        toast.success("Verification code sent to your phone");
+      }
+
       setCodeSent(true);
-      toast.success("Verification code sent to your phone");
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || "Failed to send verification code");
     } finally {
       setLoading(false);
     }
@@ -59,11 +73,13 @@ export function PhoneVerification() {
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code) {
+      setError('Please enter the verification code');
       toast.error('Please enter the verification code');
       return;
     }
 
     setLoading(true);
+    setError(""); // Clear previous errors
     try {
       const res = await fetch("/api/auth/verify-phone/verify", {
         method: "POST",
@@ -73,6 +89,7 @@ export function PhoneVerification() {
 
       const data = await res.json();
       if (!res.ok) {
+        setError(data.error || "Failed to verify code");
         throw new Error(data.error);
       }
 
@@ -84,7 +101,7 @@ export function PhoneVerification() {
       // Use hard redirect to ensure session is fully refreshed
       window.location.href = '/dashboard';
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(error.message || "Failed to verify code");
     } finally {
       setLoading(false);
     }
@@ -92,6 +109,13 @@ export function PhoneVerification() {
 
   return (
     <div className="space-y-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
       {!codeSent ? (
         <>
           <div className="flex gap-2">
@@ -131,6 +155,15 @@ export function PhoneVerification() {
         </>
       ) : (
         <>
+          {devCode && (
+            <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
+              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+              <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+                <strong>Development Mode:</strong> Your verification code is <strong className="text-lg">{devCode}</strong>
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <Input
             type="text"
             placeholder="Enter 6-digit verification code"
@@ -147,7 +180,10 @@ export function PhoneVerification() {
           </Button>
           <Button
             variant="outline"
-            onClick={() => setCodeSent(false)}
+            onClick={() => {
+              setCodeSent(false);
+              setError("");
+            }}
             disabled={loading}
             className="w-full"
           >

@@ -33,6 +33,26 @@ export default function Dashboard() {
   const [upcomingInterviews, setUpcomingInterviews] = useState<UserMeeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+
+  // Fetch user profile to check phone verification status
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const res = await fetch('/api/user/profile');
+        if (res.ok) {
+          const profile = await res.json();
+          setIsPhoneVerified(profile.isPhoneVerified || false);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      }
+    };
+
+    if (session && !isAdmin) {
+      fetchUserProfile();
+    }
+  }, [session, isAdmin]);
 
   const fetchUpcomingInterviews = useCallback(async (showLoader = true) => {
     try {
@@ -125,11 +145,32 @@ export default function Dashboard() {
             </div>
             {!isAdmin && (
               <div className="flex gap-3 flex-wrap">
-                <Button onClick={() => setShowBookingModal(true)} className="bg-primary">
+                <Button 
+                  onClick={() => {
+                    if (!isPhoneVerified) {
+                      toast.error('Please verify your phone number to schedule interviews');
+                      return;
+                    }
+                    setShowBookingModal(true);
+                  }} 
+                  disabled={!isPhoneVerified}
+                  className="bg-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <CalendarIcon className="h-4 w-4 mr-2" />
                   Schedule Interview
                 </Button>
-                <Button variant="outline">
+                <Button 
+                  variant="outline"
+                  disabled={!isPhoneVerified}
+                  onClick={() => {
+                    if (!isPhoneVerified) {
+                      toast.error('Please verify your phone number to use AI interviews');
+                      return;
+                    }
+                    toast.info('AI Interview coming soon!');
+                  }}
+                  className="disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <Sparkles className="h-4 w-4 mr-2" />
                   AI Interview
                 </Button>
