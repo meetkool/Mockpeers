@@ -31,7 +31,33 @@ This is a starter template for Next.js projects with built-in authentication, Ra
    ```
 
 3. Set up environment variables:
-   Copy `.env.example` to `.env` and fill in your details.
+   Create a `.env` file with the following variables:
+   
+   ```env
+   # Database
+   DATABASE_URL="postgresql://username:password@localhost:5432/mockpeers"
+   
+   # NextAuth
+   NEXTAUTH_URL="http://localhost:3000"
+   NEXTAUTH_SECRET="your-secret-key"
+   
+   # OAuth Providers
+   GOOGLE_CLIENT_ID="your-google-client-id"
+   GOOGLE_CLIENT_SECRET="your-google-client-secret"
+   GITHUB_CLIENT_ID="your-github-client-id"
+   GITHUB_CLIENT_SECRET="your-github-client-secret"
+   
+   # Twilio Configuration (for SMS verification)
+   USE_TWILIO="false"  # Set to "true" to use Twilio, "false" for development mode
+   TWILIO_ACCOUNT_SID="your-twilio-account-sid"
+   TWILIO_AUTH_TOKEN="your-twilio-auth-token"
+   TWILIO_PHONE_NUMBER="your-twilio-phone-number"
+   
+   # Development Settings
+   NODE_ENV="development"
+   ```
+   
+   **Note**: When `USE_TWILIO="false"`, the app will show verification codes directly on the frontend instead of sending SMS messages. This is useful for development and testing.
 
 4. Start the PostgreSQL database:
    ```bash
