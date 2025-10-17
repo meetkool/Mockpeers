@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ensureSchedules } from "@/lib/auto-schedule";
 
 export async function GET() {
   try {
+    // First, ensure schedules are created automatically
+    console.log('🔄 Running automatic schedule creation...');
+    const scheduleResult = await ensureSchedules();
+    
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)); // 30 days ago
 
@@ -14,11 +19,11 @@ export async function GET() {
           gte: thirtyDaysAgo // Only update entries from last 30 days
         },
         status: {
-          not: "COMPLETED"
+          not: "DONE"
         }
       },
       data: {
-        status: "COMPLETED"
+        status: "DONE"
       }
     });
 
@@ -83,7 +88,11 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      message: "Status updates completed successfully",
+      message: "Status updates and schedule creation completed successfully",
+      scheduleCreation: {
+        created: scheduleResult.created,
+        total: scheduleResult.total
+      },
       updates: {
         completedMeetings: completedUpdates.count,
         fixedEmptyBookings: fixEmptyBookings.count,

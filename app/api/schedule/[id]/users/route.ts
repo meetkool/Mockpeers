@@ -69,6 +69,15 @@ export async function POST(
     return NextResponse.json(userMeeting);
   } catch (error) {
     console.error("Failed to add user to meeting:", error);
+    
+    // Handle unique constraint violation (duplicate user)
+    if (error instanceof Error && error.message.includes('Unique constraint')) {
+      return NextResponse.json(
+        { error: "User is already in this meeting" },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       { error: "Failed to add user to meeting" },
       { status: 500 }
