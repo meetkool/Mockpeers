@@ -172,10 +172,11 @@ async function createReplacementMeetings(completedMeetings: any[]) {
       const newStartTime = addDays(meeting.startTime, 7);
       const newEndTime = addDays(meeting.endTime, 7);
 
-      // Check if a meeting already exists at this exact time
+      // Check if a meeting already exists at this exact time for this interview type
       const existingMeeting = await prisma.schedule.findFirst({
         where: {
           startTime: newStartTime,
+          interviewType: meeting.interviewType, // Check same type only
         },
       });
 
@@ -209,6 +210,60 @@ async function createReplacementMeetings(completedMeetings: any[]) {
 }
 
 /**
+ * Check for DONE/OVER meetings that don't have replacements yet
+ * Creates missing replacements for any completed meetings
+ */
+export async function checkAndCreateMissingReplacements() {
+  try {
+    const now = new Date();
+    
+    // Find DONE/OVER meetings that need replacements
+    const completedMeetings = await prisma.schedule.findMany({
+      where: {
+        status: {
+          in: ['DONE', 'OVER']
+        },
+        completedAt: {
+          gte: addDays(now, -30), // Only check last 30 days
+        },
+      },
+    });
+
+    if (completedMeetings.length === 0) {
+      return 0;
+    }
+
+    const missingReplacements = [];
+    
+    for (const meeting of completedMeetings) {
+      const expectedReplacementStart = addDays(meeting.startTime, 7);
+      
+      // Check if replacement exists
+      const existingReplacement = await prisma.schedule.findFirst({
+        where: {
+          startTime: expectedReplacementStart,
+          interviewType: meeting.interviewType,
+        },
+      });
+
+      if (!existingReplacement) {
+        missingReplacements.push(meeting);
+      }
+    }
+
+    if (missingReplacements.length > 0) {
+      console.log(`🔧 Found ${missingReplacements.length} DONE/OVER meetings without replacements`);
+      await createReplacementMeetings(missingReplacements);
+    }
+
+    return missingReplacements.length;
+  } catch (error) {
+    console.error('Error checking for missing replacements:', error);
+    return 0;
+  }
+}
+
+/**
  * Run all lifecycle checks in sequence
  */
 export async function runLifecycleChecks() {
@@ -219,6 +274,7 @@ export async function runLifecycleChecks() {
     expired: 0,
     activated: 0,
     completed: 0,
+    missingReplacements: 0,
   };
 
   try {
@@ -233,6 +289,9 @@ export async function runLifecycleChecks() {
 
     // Finally: Mark very old expired meetings as OVER
     results.expired = await checkAndMarkExpiredMeetings();
+    
+    // Check for any DONE/OVER meetings that are missing replacements
+    results.missingReplacements = await checkAndCreateMissingReplacements();
 
     console.log('✅ Lifecycle checks complete:', results);
     return results;

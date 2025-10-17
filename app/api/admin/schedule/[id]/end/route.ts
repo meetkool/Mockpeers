@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/authOptions";
+import { addDays } from "date-fns";
 
 export async function POST(
   request: NextRequest,
@@ -54,9 +55,40 @@ export async function POST(
       },
     });
 
+    // Create replacement meeting +7 days ahead
+    console.log(`📅 Creating replacement meeting for manually ended meeting: ${schedule.title}`);
+    const newStartTime = addDays(schedule.startTime, 7);
+    const newEndTime = addDays(schedule.endTime, 7);
+
+    // Check if a meeting already exists at this exact time and type
+    const existingMeeting = await prisma.schedule.findFirst({
+      where: {
+        startTime: newStartTime,
+        interviewType: schedule.interviewType,
+      },
+    });
+
+    if (!existingMeeting) {
+      const replacementMeeting = await prisma.schedule.create({
+        data: {
+          title: schedule.title,
+          description: schedule.description,
+          startTime: newStartTime,
+          endTime: newEndTime,
+          duration: schedule.duration,
+          waitTime: schedule.waitTime || 15,
+          status: 'PENDING',
+          interviewType: schedule.interviewType,
+        },
+      });
+      console.log(`✅ Replacement meeting created: ${replacementMeeting.id} at ${newStartTime.toISOString()}`);
+    } else {
+      console.log(`ℹ️ Meeting already exists at ${newStartTime.toISOString()}, skipping creation`);
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Meeting ended successfully",
+      message: "Meeting ended successfully and replacement meeting created",
       schedule: updatedSchedule,
     });
   } catch (error) {
