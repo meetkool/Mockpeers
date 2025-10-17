@@ -73,6 +73,7 @@ model UserMeeting {
   schedule        Schedule         @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, scheduleId])
   @@index([userId])
   @@index([scheduleId])
 }

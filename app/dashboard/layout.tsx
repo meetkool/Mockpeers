@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { OAuthProfessionHandler } from "@/app/components/auth/OAuthProfessionHandler";
 
 const sidebarItems = [
   {
@@ -201,6 +202,7 @@ export default function DashboardLayout({
           </div>
         </header>
         <main className="p-6 mt-14">{children}</main>
+        <OAuthProfessionHandler />
       </div>
     </div>
   );

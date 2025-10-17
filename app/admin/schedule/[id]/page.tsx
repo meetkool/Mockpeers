@@ -257,8 +257,7 @@ export default function ManageSchedulePage() {
   };
 
   const handleViewProfile = (userId: string) => {
-    // You can implement profile view logic here
-    toast.info(`View profile for user ${userId}`);
+    router.push(`/admin/users/${userId}`);
   };
 
   const handleRemoveUser = async (userId: string) => {
@@ -276,6 +275,24 @@ export default function ManageSchedulePage() {
     } catch (error) {
       console.error('Failed to remove user:', error);
       toast.error('Failed to remove user from meeting');
+    }
+  };
+
+  const handleEndMeeting = async () => {
+    try {
+      const response = await fetch(`/api/admin/schedule/${scheduleId}/end`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        fetchSchedule();
+        toast.success('Meeting stopped successfully');
+      } else {
+        throw new Error('Failed to stop meeting');
+      }
+    } catch (error) {
+      console.error('Failed to stop meeting:', error);
+      toast.error('Failed to stop meeting');
     }
   };
 
@@ -379,6 +396,16 @@ export default function ManageSchedulePage() {
                 <ArrowRight className="h-4 w-4 mr-2" />
                 Enter Room
               </Button>
+              {(schedule.status === 'ACTIVE' || schedule.status === 'BOOKING_STARTED') && (
+                <Button
+                  onClick={handleEndMeeting}
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold"
+                >
+                  <Ban className="h-4 w-4 mr-2" />
+                  🛑 Stop Meeting
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

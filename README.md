@@ -155,3 +155,155 @@ graph TD
     I --> C
     H -->|No| G
 ```
+
+
+I'll provide you with all the essential Prisma commands for database management, including starting the database server and working with port 5555. Here are the key commands:
+
+## Database Server Commands
+
+### Start Database Server (PostgreSQL)
+```bash
+# Start PostgreSQL server (if using local installation)
+pg_ctl start -D /path/to/data/directory
+
+# Or if using Docker
+docker run --name postgres -e POSTGRES_PASSWORD=password -p 5432:5432 -d postgres
+
+# For your specific setup (port 5433)
+docker run --name postgres -e POSTGRES_PASSWORD=password -p 5433:5432 -d postgres
+```
+
+### Prisma Studio (Database GUI) - Port 5555
+```bash
+# Start Prisma Studio on default port 5555
+npx prisma studio
+
+# Start Prisma Studio on specific port
+npx prisma studio --port 5555
+
+# Start Prisma Studio with browser auto-open disabled
+npx prisma studio --browser none
+```
+
+## Essential Prisma Commands
+
+### Database Schema Management
+```bash
+# Generate Prisma client
+npx prisma generate
+
+# Push schema changes to database (development)
+npx prisma db push
+
+# Push with data loss acceptance
+npx prisma db push --accept-data-loss
+
+# Create and apply migration
+npx prisma migrate dev --name migration_name
+
+# Apply existing migrations (production)
+npx prisma migrate deploy
+
+# Reset database (development only)
+npx prisma migrate reset
+
+# Reset with force (no confirmation)
+npx prisma migrate reset --force
+```
+
+### Database Operations
+```bash
+# Seed database
+npx prisma db seed
+
+# Format Prisma schema
+npx prisma format
+
+# Validate Prisma schema
+npx prisma validate
+
+# Introspect existing database
+npx prisma db pull
+
+# Reset database and apply all migrations
+npx prisma migrate reset
+```
+
+### Development Commands
+```bash
+# Start development server with Prisma
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+```
+
+
+## Complete Setup Commands for Your Project
+
+Based on your project structure, here's the complete workflow:
+
+```bash
+# 1. Start PostgreSQL server (if not running)
+docker run --name mockpeers-postgres -e POSTGRES_PASSWORD=password -p 5433:5432 -d postgres
+
+# 2. Generate Prisma client
+npx prisma generate
+
+# 3. Apply database schema
+npx prisma db push
+
+# 4. Start Prisma Studio (GUI for database)
+npx prisma studio --port 5555
+
+# 5. Start your Next.js development server
+npm run dev
+```
+
+## Port Configuration
+
+## Environment Variables
+
+Make sure your `.env` file has:
+```env
+DATABASE_URL="postgresql://username:password@localhost:5433/mydb"
+```
+
+## Quick Commands Summary
+
+```bash
+# Start everything
+npx prisma studio --port 5555 & npm run dev
+
+# Database operations
+npx prisma generate
+npx prisma db push
+npx prisma migrate dev --name your_migration_name
+
+# Reset and start fresh
+npx prisma migrate reset --force
+npx prisma db push
+```
+
+These commands will help you manage your Prisma database effectively, with Prisma Studio running on port 5555 for easy database management through the web interface.
+
+
+
+
+
+npx tsx scripts/create-admin.ts admin@mockpeers.com "Admin@123"
+
+npx tsx scripts/check-admin.ts
+
+
+npx tsx scripts/test-admin-password.ts
+
+
+
+
+
+cleanign the db 
+npx prisma migrate reset --force

@@ -72,6 +72,11 @@ export function UserAuthForm({ mode }: { mode: 'login' | 'signup' }) {
 
   const handleSocialLogin = async (provider: 'google' | 'github') => {
     try {
+      // Store profession in localStorage to retrieve after OAuth callback
+      if (profession) {
+        localStorage.setItem('oauth_profession', profession);
+      }
+      
       await signIn(provider, { callbackUrl: '/dashboard' });
     } catch (error) {
       toast.error(`${provider} login failed`);
