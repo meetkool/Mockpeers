@@ -27,6 +27,7 @@ export function PhoneVerification() {
   const [loading, setLoading] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
   const [error, setError] = useState("");
+  const [devCode, setDevCode] = useState<string | null>(null);
 
   const handleSendCode = async () => {
     if (!phoneNumber || phoneNumber.length < 8) {
@@ -53,8 +54,15 @@ export function PhoneVerification() {
         throw new Error(data.error);
       }
 
+      // Check if we're in development mode (code is returned)
+      if (data.developmentMode && data.code) {
+        setDevCode(data.code);
+        toast.success(`Development Mode: Your code is ${data.code}`);
+      } else {
+        toast.success("Verification code sent to your phone");
+      }
+
       setCodeSent(true);
-      toast.success("Verification code sent to your phone");
     } catch (error: any) {
       toast.error(error.message || "Failed to send verification code");
     } finally {
@@ -147,6 +155,23 @@ export function PhoneVerification() {
         </>
       ) : (
         <>
+          {/* Show verification code in development mode */}
+          {devCode && (
+            <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-400 dark:border-yellow-600">
+              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+              <AlertDescription className="text-yellow-900 dark:text-yellow-100">
+                <div className="font-semibold mb-1">🔧 Development Mode</div>
+                <div className="text-sm mb-2">Your verification code is:</div>
+                <div className="text-3xl font-bold tracking-wider text-center py-2 bg-yellow-100 dark:bg-yellow-900 rounded">
+                  {devCode}
+                </div>
+                <div className="text-xs mt-2 text-center text-yellow-700 dark:text-yellow-300">
+                  Enter this code below to verify your phone number
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <Input
             type="text"
             placeholder="Enter 6-digit verification code"
@@ -166,6 +191,7 @@ export function PhoneVerification() {
             onClick={() => {
               setCodeSent(false);
               setError("");
+              setDevCode(null);
             }}
             disabled={loading}
             className="w-full"

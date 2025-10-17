@@ -64,11 +64,15 @@ export async function POST(request: NextRequest) {
 
     console.log('🔢 Generated code:', code);
 
-    // Check if Twilio credentials are configured
-    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
-      console.log('⚠️ Twilio not configured - saving code without sending SMS');
+    // Check if Twilio is enabled via environment variable
+    const useTwilio = process.env.USE_TWILIO === 'true';
+    console.log('🔧 USE_TWILIO setting:', useTwilio);
+
+    // If Twilio is disabled or not configured, use development mode
+    if (!useTwilio || !process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
+      console.log('⚠️ Twilio disabled or not configured - Development mode activated');
       
-      // Still save the code for development/testing
+      // Save the code without sending SMS
       await prisma.user.update({
         where: { id: session.user.id },
         data: { 
@@ -79,40 +83,59 @@ export async function POST(request: NextRequest) {
         }
       });
 
+      console.log('✅ User updated with verification code (Development mode)');
+      console.log('🔢 VERIFICATION CODE:', code);
+
       return NextResponse.json({ 
         success: true,
-        message: "Development mode: Code saved but SMS not sent",
-        code: process.env.NODE_ENV === 'development' ? code : undefined // Only show code in dev
+        message: "Development mode: Verification code generated",
+        code: code, // Return code to frontend
+        developmentMode: true
       });
     }
 
-    // Send SMS using Twilio
+    // Send SMS using Twilio (only if enabled)
     console.log('📨 Sending SMS via Twilio...');
-    const message = await client.messages.create({
-      body: `Your Mockpeers verification code is: ${code}. This code will expire in 10 minutes.`,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: phoneNumber
-    });
+    try {
+      const message = await client.messages.create({
+        body: `Your Mockpeers verification code is: ${code}. This code will expire in 10 minutes.`,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: phoneNumber
+      });
 
-    console.log('✅ SMS sent, status:', message.status);
+      console.log('✅ SMS sent, status:', message.status);
 
-    // Update user's phone number, country, and verification code
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: { 
-        phoneNumber,
-        country,
-        verificationCode: code,
-        verificationCodeExpiry: expiryTime
-      }
-    });
+      // Update user's phone number, country, and verification code
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: { 
+          phoneNumber,
+          country,
+          verificationCode: code,
+          verificationCodeExpiry: expiryTime
+        }
+      });
 
-    console.log('✅ User updated with verification code');
+      console.log('✅ User updated with verification code');
 
-    return NextResponse.json({ 
-      success: true,
-      status: message.status 
-    });
+      return NextResponse.json({ 
+        success: true,
+        status: message.status,
+        developmentMode: false
+      });
+    } catch (twilioError: any) {
+      // If USE_TWILIO is true, don't fall back - return proper error
+      console.error('❌ Twilio SMS failed:', twilioError.message);
+      
+      // Return error without exposing the code
+      return NextResponse.json(
+        { 
+          error: "Failed to send verification SMS. Please try again or contact support.",
+          details: process.env.NODE_ENV === 'development' ? twilioError.message : undefined
+        },
+        { status: 500 }
+      );
+    }
   } catch (error: any) {
     console.error("❌ Phone verification error:", error);
     console.error("Error details:", error.message);
