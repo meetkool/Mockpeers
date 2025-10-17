@@ -8,29 +8,27 @@ datasource db {
 }
 
 model User {
-  id                    String        @id @default(cuid())
-  email                 String        @unique
-  name                  String?
-  image                 String?
-  password              String?
-  profession            String?
-  provider              Provider
-  phoneNumber           String?       @unique
-  country               String?
-  isPhoneVerified       Boolean       @default(false)
-  verificationCode      String?
+  id                     String        @id @default(cuid())
+  email                  String        @unique
+  name                   String?
+  image                  String?
+  password               String?
+  profession             String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  provider               Provider
+  country                String?
+  isPhoneVerified        Boolean       @default(false)
+  phoneNumber            String?       @unique
+  verificationCode       String?
   verificationCodeExpiry DateTime?
-  preferredMode         String?       // PEER, AI, FRIEND
-  onboardingCompleted   Boolean       @default(false)
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
-  userMeetings          UserMeeting[] // Changed from UserMeeting to userMeetings
-}
-
-enum Provider {
-  EMAIL
-  GOOGLE
-  GITHUB
+  onboardingCompleted    Boolean       @default(false)
+  preferredMode          String?
+  interviewLanguages     String[]      @default([])
+  leetcodeUsername       String?
+  questionDifficulties   String[]      @default([])
+  readLanguages          String[]      @default([])
+  userMeetings           UserMeeting[]
 }
 
 model Admin {
@@ -53,42 +51,55 @@ model Schedule {
   description  String?
   meetingUrl   String?
   status       ScheduleStatus @default(PENDING)
-  bookingOpen  Boolean        @default(true) // Admin can manually open/close bookings
-  startedAt    DateTime?
-  completedAt  DateTime?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
-  userMeetings UserMeeting[] // Changed from UserMeeting to userMeetings
+  startedAt    DateTime?
+  completedAt  DateTime?
+  bookingOpen  Boolean        @default(true)
+  userMeetings UserMeeting[]
+}
+
+model UserMeeting {
+  id              String           @id @default(cuid())
+  userId          String
+  scheduleId      String
+  role            String           @default("PARTICIPANT")
+  status          String           @default("JOINED")
+  joinedAt        DateTime         @default(now())
+  leftAt          DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  experienceLevel ExperienceLevel? // Changed from String? to enum
+  schedule        Schedule         @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([scheduleId])
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum Provider {
+  EMAIL
+  GOOGLE
+  GITHUB
 }
 
 enum ScheduleStatus {
-  PENDING          // Waiting for first booking
-  BOOKING_STARTED  // Has bookings, accepting more
-  ACTIVE           // Meeting is happening now
-  DONE             // Successfully completed
-  OVER             // Time passed, no bookings
-  CANCELLED        // Admin cancelled
+  PENDING
+  BOOKING_STARTED
+  ACTIVE
+  DONE
+  OVER
+  CANCELLED
 }
 
 enum InterviewLevel {
   BEGINNER
   INTERMEDIATE
   ADVANCED
-}
-
-model UserMeeting {
-  id         String    @id @default(cuid())
-  userId     String
-  scheduleId String
-  role       String    @default("PARTICIPANT")
-  status     String    @default("JOINED")
-  joinedAt   DateTime  @default(now())
-  leftAt     DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  schedule   Schedule  @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([scheduleId])
 }
