@@ -188,6 +188,7 @@ async function createReplacementMeetings(completedMeetings: any[]) {
           duration: meeting.duration,
           waitTime: meeting.waitTime || 15,
           status: 'PENDING',
+          interviewType: meeting.interviewType, // Preserve the interview type
         });
       }
     }

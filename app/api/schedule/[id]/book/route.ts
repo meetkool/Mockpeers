@@ -56,6 +56,34 @@ export async function POST(
       return NextResponse.json({ error: 'You have already booked this interview' }, { status: 400 });
     }
 
+    // Check if user has already booked ANY interview at the same time slot
+    const conflictingBooking = await prisma.userMeeting.findFirst({
+      where: {
+        userId: session.user.id,
+        schedule: {
+          startTime: schedule.startTime,
+          endTime: schedule.endTime,
+          status: {
+            in: ['PENDING', 'BOOKING_STARTED', 'ACTIVE']
+          }
+        }
+      },
+      include: {
+        schedule: {
+          select: {
+            title: true,
+            interviewType: true
+          }
+        }
+      }
+    });
+
+    if (conflictingBooking) {
+      return NextResponse.json({ 
+        error: `You have already booked a ${conflictingBooking.schedule.interviewType} interview at this time slot. You cannot join multiple interviews simultaneously.` 
+      }, { status: 400 });
+    }
+
     // Create user meeting with experience level
     const userMeeting = await prisma.userMeeting.create({
       data: {

@@ -42,6 +42,7 @@ export async function GET() {
             duration: true,
             status: true,
             counting: true,
+            interviewType: true,
           }
         }
       },

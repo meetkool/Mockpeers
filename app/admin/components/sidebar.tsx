@@ -13,8 +13,14 @@ import {
   VideoIcon,
   MessageSquare,
   LogOut,
+  Code,
+  Network,
+  Database,
+  Brain,
+  Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 const sidebarItems = [
   {
@@ -32,10 +38,45 @@ const sidebarItems = [
     href: "/admin/interviews",
     icon: VideoIcon,
   },
+  // Schedule Management - Separate Modules for Each Interview Type
   {
-    title: "Schedule",
-    href: "/admin/schedule",
-    icon: Calendar,
+    title: "DSA Schedules",
+    href: "/admin/schedule/dsa",
+    icon: Code,
+    description: "Data Structures & Algorithms Schedule Module",
+  },
+  {
+    title: "System Design Schedules",
+    href: "/admin/schedule/system-design",
+    icon: Network,
+    description: "Technical Architecture Design Schedule Module",
+  },
+  {
+    title: "Behavioral Schedules",
+    href: "/admin/schedule/behavioral",
+    icon: MessageSquare,
+    description: "Work Experience Questions Schedule Module",
+  },
+  {
+    title: "SQL Schedules",
+    href: "/admin/schedule/sql",
+    icon: Database,
+    description: "Database Queries & Optimization Schedule Module",
+    badge: "Beta",
+  },
+  {
+    title: "Data Science Schedules",
+    href: "/admin/schedule/data-science",
+    icon: Brain,
+    description: "Data Analysis & ML Schedule Module",
+    badge: "Beta",
+  },
+  {
+    title: "Frontend Schedules",
+    href: "/admin/schedule/frontend",
+    icon: Monitor,
+    description: "JavaScript & Web Development Schedule Module",
+    badge: "Beta",
   },
   {
     title: "Analytics",
@@ -70,20 +111,39 @@ export function Sidebar() {
       </div>
       
       <nav className="p-4 space-y-2 flex-1">
-        {sidebarItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
-              pathname === item.href &&
-                "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-50"
-            )}
-          >
-            <item.icon className="w-5 h-5" />
-            {item.title}
-          </Link>
-        ))}
+        {sidebarItems.map((item, index) => {
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          const isScheduleModule = item.href.includes('/schedule/');
+          const isFirstScheduleModule = isScheduleModule && 
+            (index === 0 || !sidebarItems[index - 1].href.includes('/schedule/'));
+          
+          return (
+            <div key={item.href}>
+              {isFirstScheduleModule && (
+                <div className="px-3 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  📅 Schedule Management
+                </div>
+              )}
+              <Link
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
+                  isActive &&
+                    "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-50",
+                  isScheduleModule && "ml-4 text-sm"
+                )}
+              >
+                <item.icon className="w-5 h-5" />
+                <span className="flex-1">{item.title}</span>
+                {item.badge && (
+                  <Badge variant="secondary" className="text-xs">
+                    {item.badge}
+                  </Badge>
+                )}
+              </Link>
+            </div>
+          );
+        })}
       </nav>
 
       <div className="p-4 border-t">

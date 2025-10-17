@@ -13,13 +13,19 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, startTime, endTime, description, meetingUrl } = body;
+    const { title, startTime, endTime, description, meetingUrl, interviewType } = body;
 
     // Validate required fields
-    if (!title || !startTime || !endTime) {
+    if (!title || !startTime || !endTime || !interviewType) {
       return NextResponse.json({ 
-        error: "Missing required fields: title, startTime, endTime" 
+        error: "Missing required fields: title, startTime, endTime, interviewType" 
       }, { status: 400 });
+    }
+
+    // Validate interview type
+    const validInterviewTypes = ['DSA', 'SYSTEM_DESIGN', 'BEHAVIORAL', 'SQL', 'DATA_SCIENCE', 'FRONTEND'];
+    if (!validInterviewTypes.includes(interviewType)) {
+      return NextResponse.json({ error: 'Invalid interview type' }, { status: 400 });
     }
 
     // Calculate duration in minutes
@@ -41,6 +47,7 @@ export async function POST(request: NextRequest) {
         endTime: end,
         description,
         meetingUrl,
+        interviewType,
         duration: durationInMinutes,
         waitTime: 15, // Default wait time
         status: "PENDING",

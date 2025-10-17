@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Users, Video, Star, ChevronLeft, ChevronRight, Calendar, Archive } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
+import { InterviewTypeTabs } from "@/app/components/interviews/InterviewTypeTabs";
+import { InterviewType, INTERVIEW_TYPE_CONFIG } from "@/lib/types/interview-types";
 
 interface Meeting {
   id: string;
@@ -19,6 +21,7 @@ interface Meeting {
     status: string;
     counting: number;
     description?: string;
+    interviewType: InterviewType;
   };
 }
 
@@ -44,6 +47,31 @@ export default function Interviews() {
     totalPages: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [selectedInterviewType, setSelectedInterviewType] = useState<InterviewType | 'ALL'>('ALL');
+
+  // Filter meetings by selected type
+  const filteredUpcomingMeetings = upcomingMeetings.filter(meeting => {
+    if (selectedInterviewType === 'ALL') return true;
+    return meeting.schedule.interviewType === selectedInterviewType;
+  });
+
+  const filteredPastMeetings = pastMeetings.filter(meeting => {
+    if (selectedInterviewType === 'ALL') return true;
+    return meeting.schedule.interviewType === selectedInterviewType;
+  });
+
+  // Get badge colors for interview types
+  const getInterviewTypeBadgeColors = (interviewType: InterviewType) => {
+    const colorMap = {
+      'DSA': 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
+      'SYSTEM_DESIGN': 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
+      'BEHAVIORAL': 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800',
+      'SQL': 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800',
+      'DATA_SCIENCE': 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900/20 dark:text-pink-300 dark:border-pink-800',
+      'FRONTEND': 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-800',
+    };
+    return colorMap[interviewType] || 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-800';
+  };
 
   const fetchUpcomingMeetings = async () => {
     try {
@@ -95,7 +123,7 @@ export default function Interviews() {
     return <Badge className={`${config.color} text-[10px] h-5 px-2 font-medium`}>{config.label}</Badge>;
   };
 
-  const totalInterviews = upcomingMeetings.length + pagination.total;
+  const totalInterviews = filteredUpcomingMeetings.length + filteredPastMeetings.length;
 
   if (loading) {
     return (
@@ -126,7 +154,7 @@ export default function Interviews() {
             <Clock className="h-3.5 w-3.5 text-muted-foreground" />
           </CardHeader>
           <CardContent className="pb-3">
-            <div className="text-2xl font-bold">{upcomingMeetings.length}</div>
+            <div className="text-2xl font-bold">{filteredUpcomingMeetings.length}</div>
             <p className="text-[10px] text-muted-foreground mt-0.5">Scheduled meetings</p>
           </CardContent>
         </Card>
@@ -137,7 +165,7 @@ export default function Interviews() {
             <Users className="h-3.5 w-3.5 text-muted-foreground" />
           </CardHeader>
           <CardContent className="pb-3">
-            <div className="text-2xl font-bold">{pagination.total}</div>
+            <div className="text-2xl font-bold">{filteredPastMeetings.length}</div>
             <p className="text-[10px] text-muted-foreground mt-0.5">Past interviews</p>
           </CardContent>
         </Card>
@@ -160,6 +188,13 @@ export default function Interviews() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Interview Type Tabs */}
+      <InterviewTypeTabs
+        selectedType={selectedInterviewType}
+        onTypeChange={setSelectedInterviewType}
+        className="mb-6"
+      />
 
       {/* Header */}
       <div className="flex justify-between items-center pt-2">
@@ -186,13 +221,13 @@ export default function Interviews() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y">
-            {upcomingMeetings.length === 0 ? (
+            {filteredUpcomingMeetings.length === 0 ? (
               <div className="text-center py-10 px-4">
                 <Clock className="h-10 w-10 text-gray-300 mx-auto mb-2" />
                 <p className="text-xs text-gray-500">No upcoming interviews scheduled</p>
               </div>
             ) : (
-              upcomingMeetings.map((meeting) => (
+              filteredUpcomingMeetings.map((meeting) => (
                 <div
                   key={meeting.id}
                   className="px-4 py-2.5 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors"
@@ -203,7 +238,15 @@ export default function Interviews() {
                         <Clock className="h-4 w-4 text-blue-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-medium truncate">{meeting.schedule.title}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-medium truncate">{meeting.schedule.title}</h3>
+                          <Badge 
+                            variant="outline" 
+                            className={`text-[10px] h-4 px-1.5 font-medium ${getInterviewTypeBadgeColors(meeting.schedule.interviewType)}`}
+                          >
+                            {INTERVIEW_TYPE_CONFIG[meeting.schedule.interviewType]?.name || meeting.schedule.interviewType}
+                          </Badge>
+                        </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           <p className="text-xs text-gray-600 dark:text-gray-400">
                             {format(new Date(meeting.schedule.startTime), 'MMM dd, yyyy h:mm a')}
@@ -249,14 +292,14 @@ export default function Interviews() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y">
-            {pastMeetings.length === 0 ? (
+            {filteredPastMeetings.length === 0 ? (
               <div className="text-center py-10 px-4">
                 <Archive className="h-10 w-10 text-gray-300 mx-auto mb-2" />
                 <p className="text-xs text-gray-500">No past interviews found</p>
               </div>
             ) : (
               <>
-                {pastMeetings.map((meeting) => (
+                {filteredPastMeetings.map((meeting) => (
                   <div
                     key={meeting.id}
                     className="px-4 py-2.5 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors"
@@ -267,9 +310,17 @@ export default function Interviews() {
                           <Video className="h-4 w-4 text-gray-400" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
-                            {meeting.schedule.title}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                              {meeting.schedule.title}
+                            </h3>
+                            <Badge 
+                              variant="outline" 
+                              className={`text-[10px] h-4 px-1.5 font-medium ${getInterviewTypeBadgeColors(meeting.schedule.interviewType)}`}
+                            >
+                              {INTERVIEW_TYPE_CONFIG[meeting.schedule.interviewType]?.name || meeting.schedule.interviewType}
+                            </Badge>
+                          </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <p className="text-xs text-gray-600 dark:text-gray-400">
                               {format(new Date(meeting.schedule.startTime), 'MMM dd, yyyy h:mm a')}

@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { addDays, setHours, setMinutes, setSeconds, setMilliseconds, isBefore, startOfDay } from 'date-fns';
 import { runLifecycleChecks } from './meeting-lifecycle';
+import { INTERVIEW_TYPES, INTERVIEW_TYPE_CONFIG } from './types/interview-types';
 
 // Time slots to maintain (24-hour format) - Indian Timings
 const TIME_SLOTS = [
@@ -48,6 +49,7 @@ export async function ensureSchedules() {
         },
         select: {
           startTime: true,
+          interviewType: true,
         },
       });
 
@@ -56,11 +58,6 @@ export async function ensureSchedules() {
         const slotDate = new Date(s.startTime);
         return slotDate.getHours() === slot.hour && slotDate.getMinutes() === slot.minute;
       });
-
-      // Find the latest slot for this time
-      const latestSlotForTime = slotsAtThisTime.length > 0 
-        ? slotsAtThisTime[slotsAtThisTime.length - 1]
-        : null;
 
       // Create slots from today up to 7 days ahead
       for (let day = 0; day <= DAYS_AHEAD; day++) {
@@ -76,24 +73,28 @@ export async function ensureSchedules() {
           continue;
         }
 
-        // Check if this exact slot already exists
-        const exists = slotsAtThisTime.some(s => 
-          s.startTime.getTime() === slotTime.getTime()
-        );
+        // Check if this exact slot already exists for each interview type
+        for (const interviewType of INTERVIEW_TYPES) {
+          const exists = slotsAtThisTime.some(s => 
+            s.startTime.getTime() === slotTime.getTime() && s.interviewType === interviewType
+          );
 
-        if (!exists) {
-          const endTime = new Date(slotTime);
-          endTime.setMinutes(endTime.getMinutes() + INTERVIEW_DURATION);
+          if (!exists) {
+            const endTime = new Date(slotTime);
+            endTime.setMinutes(endTime.getMinutes() + INTERVIEW_DURATION);
 
-          schedulesToCreate.push({
-            title: getInterviewTitle(slot.hour),
-            startTime: slotTime,
-            endTime: endTime,
-            duration: INTERVIEW_DURATION,
-            waitTime: 15,
-            status: 'PENDING',
-            description: `${getInterviewTitle(slot.hour)} - Join and practice with peers`,
-          });
+            const config = INTERVIEW_TYPE_CONFIG[interviewType];
+            schedulesToCreate.push({
+              title: `${config.name} - ${getInterviewTitle(slot.hour)}`,
+              startTime: slotTime,
+              endTime: endTime,
+              duration: INTERVIEW_DURATION,
+              waitTime: 15,
+              status: 'PENDING',
+              interviewType: interviewType,
+              description: `${config.description} - Join and practice with peers`,
+            });
+          }
         }
       }
     }

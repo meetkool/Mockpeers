@@ -148,6 +148,24 @@ export function BookingModal({ open, onClose, onBookingSuccess }: BookingModalPr
     return schedule.userMeetings?.some((meeting: any) => meeting.userId === session.user.id) || false;
   };
 
+  // Helper function to check if user has booked ANY interview at the same time slot
+  const isTimeSlotConflicted = (schedule: any) => {
+    if (!session?.user?.id) return false;
+    
+    // Check if user has any booking at the same time slot across all interview types
+    return availableSchedules.some((otherSchedule: any) => {
+      if (otherSchedule.id === schedule.id) return false; // Skip the same schedule
+      
+      const sameTimeSlot = 
+        new Date(otherSchedule.startTime).getTime() === new Date(schedule.startTime).getTime() &&
+        new Date(otherSchedule.endTime).getTime() === new Date(schedule.endTime).getTime();
+      
+      const userBookedOther = otherSchedule.userMeetings?.some((meeting: any) => meeting.userId === session.user.id);
+      
+      return sameTimeSlot && userBookedOther;
+    });
+  };
+
   const handleInterviewTypeSelect = (type: InterviewType) => {
     setSelectedType(type);
     setStep(2);
@@ -213,17 +231,26 @@ export function BookingModal({ open, onClose, onBookingSuccess }: BookingModalPr
       return;
     }
     
+    if (!selectedType) {
+      toast.error('Please select an interview type');
+      return;
+    }
+    
     setLoading(true);
     try {
-      // Fetch available schedules
-      const res = await fetch('/api/schedule');
+      // Fetch available schedules for the specific interview type
+      const res = await fetch(`/api/schedules/${selectedType}`);
       const data = await res.json();
       if (Array.isArray(data)) {
         setAvailableSchedules(data);
+      } else {
+        setAvailableSchedules([]);
       }
       setStep(5); // Go to time selection
     } catch (error) {
+      console.error('Failed to load available times:', error);
       toast.error('Failed to load available times');
+      setAvailableSchedules([]);
     } finally {
       setLoading(false);
     }
@@ -563,15 +590,24 @@ export function BookingModal({ open, onClose, onBookingSuccess }: BookingModalPr
         {step === 5 && (
           <>
             <DialogHeader>
-              <DialogTitle className="text-2xl">Select a time to practice</DialogTitle>
-              <p className="text-sm text-muted-foreground">All times shown in your local timezone</p>
+              <DialogTitle className="text-2xl">
+                Select a time to practice {selectedType && interviewTypes.find(t => t.id === selectedType)?.title}
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                Available {selectedType && interviewTypes.find(t => t.id === selectedType)?.title} sessions - All times shown in your local timezone
+              </p>
             </DialogHeader>
             <div className="space-y-4 mt-4">
               {availableSchedules.length === 0 ? (
                 <Card>
                   <CardContent className="py-8 text-center">
                     <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">No available time slots at the moment.</p>
+                    <p className="text-muted-foreground">
+                      No available {selectedType && interviewTypes.find(t => t.id === selectedType)?.title} sessions at the moment.
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Check back later or try a different interview type.
+                    </p>
                   </CardContent>
                 </Card>
               ) : (
@@ -587,8 +623,9 @@ export function BookingModal({ open, onClose, onBookingSuccess }: BookingModalPr
                           new Date()
                         );
                         const alreadyBooked = isUserAlreadyBooked(schedule);
+                        const timeSlotConflicted = isTimeSlotConflicted(schedule);
                         // If bookingOpen is true, admin has allowed booking (overrides time restriction)
-                        const isDisabled = alreadyBooked;
+                        const isDisabled = alreadyBooked || timeSlotConflicted;
 
                         return (
                           <Button
@@ -596,14 +633,26 @@ export function BookingModal({ open, onClose, onBookingSuccess }: BookingModalPr
                             variant="outline"
                             onClick={() => !isDisabled && handleScheduleSelect(schedule)}
                             disabled={isDisabled}
+                            title={
+                              isDisabled 
+                                ? timeSlotConflicted 
+                                  ? 'You have already booked another interview at this time slot'
+                                  : 'You have already booked this interview'
+                                : 'Click to book this time slot'
+                            }
                             className={`flex items-center gap-2 ${
                               isDisabled 
-                                ? 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-50' 
+                                ? timeSlotConflicted
+                                  ? 'bg-red-100 text-red-400 dark:bg-red-900/20 dark:text-red-400 border-red-200 dark:border-red-800 cursor-not-allowed opacity-75'
+                                  : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-50'
                                 : 'hover:bg-primary hover:text-primary-foreground'
                             }`}
                           >
                             <Clock className="h-4 w-4" />
-                            {format(new Date(schedule.startTime), 'hh:mm a')}
+                            <span>{format(new Date(schedule.startTime), 'hh:mm a')}</span>
+                            <Badge variant="secondary" className="text-xs">
+                              {schedule.interviewType}
+                            </Badge>
                             {minutesToStart < 20 && minutesToStart > 0 && (
                               <span className="text-xs text-orange-600 dark:text-orange-400 ml-1">
                                 Starts in {minutesToStart}m

@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar as CalendarIcon, Sparkles, Video } from "lucide-react";
 import { PhoneVerificationBanner } from "@/app/components/PhoneVerificationBanner";
 import { BookingModal } from "@/app/components/interviews/BookingModal";
+import { InterviewTypeTabs } from "@/app/components/interviews/InterviewTypeTabs";
 import { format, differenceInMinutes } from "date-fns";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { InterviewType, INTERVIEW_TYPE_CONFIG } from "@/lib/types/interview-types";
 
 interface UserMeeting {
   id: string;
@@ -22,6 +24,7 @@ interface UserMeeting {
     endTime: string;
     duration: number;
     status: string;
+    interviewType: InterviewType;
   };
 }
 
@@ -34,6 +37,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [selectedInterviewType, setSelectedInterviewType] = useState<InterviewType | 'ALL'>('ALL');
 
   // Fetch user profile to check phone verification status
   useEffect(() => {
@@ -76,6 +80,42 @@ export default function Dashboard() {
       }
     }
   }, []);
+
+  // Filter interviews by selected type
+  const filteredInterviews = upcomingInterviews.filter(interview => {
+    if (selectedInterviewType === 'ALL') return true;
+    return interview.schedule.interviewType === selectedInterviewType;
+  });
+
+  // Get badge colors for interview types
+  const getInterviewTypeBadgeColors = (interviewType: InterviewType) => {
+    const colorMap = {
+      'DSA': 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
+      'SYSTEM_DESIGN': 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
+      'BEHAVIORAL': 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800',
+      'SQL': 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800',
+      'DATA_SCIENCE': 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-900/20 dark:text-pink-300 dark:border-pink-800',
+      'FRONTEND': 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-800',
+    };
+    return colorMap[interviewType] || 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-800';
+  };
+
+  // Helper function to check if user has booked ANY interview at the same time slot
+  const isTimeSlotConflicted = (interview: UserMeeting) => {
+    if (!session?.user?.id) return false;
+    
+    // Since we're already looking at the user's bookings, 
+    // we just need to check if there are multiple interviews at the same time
+    return upcomingInterviews.some((otherInterview: UserMeeting) => {
+      if (otherInterview.id === interview.id) return false; // Skip the same interview
+      
+      const sameTimeSlot = 
+        new Date(otherInterview.schedule.startTime).getTime() === new Date(interview.schedule.startTime).getTime() &&
+        new Date(otherInterview.schedule.endTime).getTime() === new Date(interview.schedule.endTime).getTime();
+      
+      return sameTimeSlot;
+    });
+  };
 
   // Real-time timer update every 5 seconds for responsive UI
   useEffect(() => {
@@ -248,6 +288,15 @@ export default function Dashboard() {
               </Button>
             </div>
 
+            {/* Interview Type Tabs */}
+            {!isAdmin && (
+              <InterviewTypeTabs
+                selectedType={selectedInterviewType}
+                onTypeChange={setSelectedInterviewType}
+                className="mb-6"
+              />
+            )}
+
             {loading ? (
               <Card className="border-0 shadow-sm">
                 <CardContent className="py-16 text-center">
@@ -255,17 +304,25 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground">Loading interviews...</p>
                 </CardContent>
               </Card>
-            ) : upcomingInterviews.length === 0 ? (
+            ) : filteredInterviews.length === 0 ? (
               <Card className="border-0 shadow-sm bg-white/50 dark:bg-gray-900/50">
                 <CardContent className="py-16 text-center">
                   <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <CalendarIcon className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">No scheduled interviews</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    {selectedInterviewType === 'ALL' 
+                      ? 'No scheduled interviews' 
+                      : `No ${INTERVIEW_TYPE_CONFIG[selectedInterviewType as InterviewType]?.name} interviews`
+                    }
+                  </h3>
                   <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
                     {isAdmin 
                       ? 'Admins cannot book interviews. Please use a regular user account.'
-                      : 'Book your first mock interview and start practicing today!'}
+                      : selectedInterviewType === 'ALL'
+                        ? 'Book your first mock interview and start practicing today!'
+                        : `No ${INTERVIEW_TYPE_CONFIG[selectedInterviewType as InterviewType]?.name} interviews scheduled. Try selecting a different type or book a new interview.`
+                    }
                   </p>
                   {!isAdmin && (
                     <Button onClick={() => setShowBookingModal(true)} size="lg">
@@ -279,7 +336,7 @@ export default function Dashboard() {
               <Card className="border border-gray-200 dark:border-gray-800">
                 <CardContent className="p-0">
                   <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {upcomingInterviews.map((meeting, index) => {
+                    {filteredInterviews.map((meeting, index) => {
                       const now = currentTime;
                       const startTime = new Date(meeting.schedule.startTime);
                       const endTime = new Date(meeting.schedule.endTime);
@@ -311,6 +368,12 @@ export default function Dashboard() {
                                 <h3 className="font-medium text-sm truncate">
                                   {meeting.schedule.title}
                                 </h3>
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-xs font-medium ${getInterviewTypeBadgeColors(meeting.schedule.interviewType)}`}
+                                >
+                                  {INTERVIEW_TYPE_CONFIG[meeting.schedule.interviewType]?.name || meeting.schedule.interviewType}
+                                </Badge>
                                 {isActive && (
                                   <Badge className="bg-orange-100 text-orange-800 border-0 dark:bg-orange-900 dark:text-orange-200 text-xs">
                                     <div className="w-1.5 h-1.5 rounded-full bg-orange-600 mr-1 animate-pulse"></div>

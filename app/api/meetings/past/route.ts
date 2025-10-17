@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
             status: true,
             counting: true,
             description: true,
+            interviewType: true,
           }
         }
       },
