@@ -54,8 +54,8 @@ export function PhoneVerification() {
         throw new Error(data.error);
       }
 
-      // Check if we're in development mode (code is returned)
-      if (data.developmentMode && data.code) {
+      // Check if code is returned (development mode)
+      if (data.code) {
         setDevCode(data.code);
         toast.success(`Development Mode: Your code is ${data.code}`);
       } else {
@@ -98,8 +98,10 @@ export function PhoneVerification() {
       // Update the session to reflect the phone verification
       await update();
       
-      // Use hard redirect to ensure session is fully refreshed
-      window.location.href = '/dashboard';
+      // Wait a moment for session to update, then redirect
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 500);
     } catch (error: any) {
       toast.error(error.message || "Failed to verify code");
     } finally {

@@ -13,8 +13,13 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { userId } = await request.json();
+    const { userId, experienceLevel } = await request.json();
     const { id: scheduleId } = await params;
+
+    // Validate experience level if provided
+    if (experienceLevel && !['BEGINNER', 'INTERMEDIATE', 'ADVANCED'].includes(experienceLevel)) {
+      return NextResponse.json({ error: 'Invalid experience level' }, { status: 400 });
+    }
 
     // Check if user is already in this meeting
     const existing = await prisma.userMeeting.findFirst({
@@ -31,12 +36,13 @@ export async function POST(
       );
     }
 
-    // Create the user meeting
+    // Create the user meeting with experience level
     const userMeeting = await prisma.userMeeting.create({
       data: {
         userId,
         scheduleId,
         role: "PARTICIPANT",
+        experienceLevel: experienceLevel || null,
       },
     });
 

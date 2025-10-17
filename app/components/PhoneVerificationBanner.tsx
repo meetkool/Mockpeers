@@ -5,14 +5,60 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Phone, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export function PhoneVerificationBanner() {
   const { data: session } = useSession();
   const [dismissed, setDismissed] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Don't show if phone is verified or banner is dismissed
-  if (session?.user?.isPhoneVerified || dismissed) {
+  // Fetch user profile to check phone verification status
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const res = await fetch('/api/user/profile');
+        if (res.ok) {
+          const profile = await res.json();
+          setIsPhoneVerified(profile.isPhoneVerified || false);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (session?.user?.id) {
+      fetchUserProfile();
+    }
+  }, [session]);
+
+  // Refresh verification status when component becomes visible (e.g., after returning from verification page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && session?.user?.id) {
+        const fetchUserProfile = async () => {
+          try {
+            const res = await fetch('/api/user/profile');
+            if (res.ok) {
+              const profile = await res.json();
+              setIsPhoneVerified(profile.isPhoneVerified || false);
+            }
+          } catch (error) {
+            console.error('Failed to fetch user profile:', error);
+          }
+        };
+        fetchUserProfile();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [session]);
+
+  // Don't show if phone is verified, banner is dismissed, or still loading
+  if (loading || isPhoneVerified || dismissed) {
     return null;
   }
 
