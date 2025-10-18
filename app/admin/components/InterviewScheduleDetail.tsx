@@ -395,15 +395,16 @@ export function InterviewScheduleDetail({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Icon className="h-5 w-5" />
-              {config.name} Schedule Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* Schedule Details Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Icon className="h-5 w-5" />
+            {config.name} Schedule Details
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="text-sm font-medium text-gray-500">Title</label>
               <p className="text-lg font-semibold">{schedule.title}</p>
@@ -412,93 +413,186 @@ export function InterviewScheduleDetail({
               <label className="text-sm font-medium text-gray-500">Description</label>
               <p className="text-gray-700">{schedule.description || 'No description provided'}</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Start Time</label>
-                <p className="font-semibold">{format(startTime, 'PPp')}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">End Time</label>
-                <p className="font-semibold">{format(endTime, 'PPp')}</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-500">Start Time</label>
+              <p className="font-semibold text-sm">{format(startTime, 'PPp')}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">End Time</label>
+              <p className="font-semibold text-sm">{format(endTime, 'PPp')}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Duration</label>
+              <p className="font-semibold">{schedule.duration} minutes</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Wait Time</label>
+              <p className="font-semibold">{schedule.waitTime} minutes</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-500">Status</label>
+              <div className="mt-1">{getStatusBadge(schedule.status)}</div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Booking Status</label>
+              <div className="mt-1">
+                <Badge className={bookingStatus.color}>{bookingStatus.label}</Badge>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Duration</label>
-                <p className="font-semibold">{schedule.duration} minutes</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Wait Time</label>
-                <p className="font-semibold">{schedule.waitTime} minutes</p>
-              </div>
+          </div>
+          {schedule.meetingUrl && (
+            <div>
+              <label className="text-sm font-medium text-gray-500">Meeting URL</label>
+              <p className="text-blue-600 break-all">{schedule.meetingUrl}</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Status</label>
-                <div className="mt-1">{getStatusBadge(schedule.status)}</div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Booking Status</label>
-                <div className="mt-1">
-                  <Badge className={bookingStatus.color}>{bookingStatus.label}</Badge>
-                </div>
-              </div>
-            </div>
-            {schedule.meetingUrl && (
-              <div>
-                <label className="text-sm font-medium text-gray-500">Meeting URL</label>
-                <p className="text-blue-600 break-all">{schedule.meetingUrl}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Participants ({schedule.userMeetings?.length || 0})</span>
-              <Button
-                size="sm"
-                onClick={() => setIsAddUserOpen(true)}
-                disabled={schedule.status === 'DONE' || schedule.status === 'OVER'}
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add User
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {schedule.userMeetings && schedule.userMeetings.length > 0 ? (
-              <div className="space-y-3">
-                {schedule.userMeetings.map((userMeeting) => (
-                  <div key={userMeeting.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-medium">{userMeeting.user.name}</p>
-                      <p className="text-sm text-gray-500">{userMeeting.user.email}</p>
-                      {userMeeting.experienceLevel && (
-                        <Badge variant="outline" className="mt-1">
-                          {userMeeting.experienceLevel}
+      {/* Participants Table - Full Width */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Participants ({schedule.userMeetings?.length || 0})</span>
+            <Button
+              size="sm"
+              onClick={() => setIsAddUserOpen(true)}
+              disabled={schedule.status === 'DONE' || schedule.status === 'OVER'}
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add User
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {schedule.userMeetings && schedule.userMeetings.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-gray-200 dark:border-gray-700">
+                    <th className="text-left p-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Name</th>
+                    <th className="text-left p-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Experience</th>
+                    <th className="text-left p-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Contact</th>
+                    <th className="text-left p-4 text-sm font-semibold text-gray-700 dark:text-gray-300">LeetCode</th>
+                    <th className="text-left p-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Status</th>
+                    <th className="text-left p-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Joined At</th>
+                    <th className="text-center p-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {schedule.userMeetings.map((userMeeting) => (
+                    <tr key={userMeeting.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                      <td className="p-4">
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {userMeeting.user.name || 'N/A'}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {userMeeting.user.email}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        {userMeeting.experienceLevel ? (
+                          <Badge 
+                            variant="outline" 
+                            className={
+                              userMeeting.experienceLevel === 'BEGINNER' 
+                                ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400'
+                                : userMeeting.experienceLevel === 'INTERMEDIATE'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400'
+                                : 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400'
+                            }
+                          >
+                            {userMeeting.experienceLevel}
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-gray-400">N/A</span>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex flex-col gap-1 text-sm">
+                          {userMeeting.user.phoneNumber && (
+                            <div className="flex items-center gap-1 text-gray-700 dark:text-gray-300">
+                              <span>📞</span>
+                              <span className="font-mono text-xs">{userMeeting.user.phoneNumber}</span>
+                            </div>
+                          )}
+                          {userMeeting.user.country && (
+                            <div className="flex items-center gap-1 text-gray-700 dark:text-gray-300">
+                              <span>🌍</span>
+                              <span className="font-semibold text-xs">{userMeeting.user.country}</span>
+                            </div>
+                          )}
+                          {!userMeeting.user.phoneNumber && !userMeeting.user.country && (
+                            <span className="text-xs text-gray-400">No contact info</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        {userMeeting.user.leetcodeUsername ? (
+                          <a
+                            href={`https://leetcode.com/${userMeeting.user.leetcodeUsername}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                          >
+                            {userMeeting.user.leetcodeUsername}
+                          </a>
+                        ) : (
+                          <span className="text-sm text-gray-400">Not provided</span>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <Badge 
+                          variant="outline"
+                          className={
+                            userMeeting.status === 'JOINED'
+                              ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400'
+                              : 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400'
+                          }
+                        >
+                          {userMeeting.status}
                         </Badge>
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleRemoveUser(userMeeting.id)}
-                      disabled={actionLoading === userMeeting.id}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <UserMinus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">No participants yet</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="text-sm text-gray-700 dark:text-gray-300">
+                          <div>{format(new Date(userMeeting.joinedAt), 'MMM dd, yyyy')}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {format(new Date(userMeeting.joinedAt), 'hh:mm a')}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRemoveUser(userMeeting.id)}
+                          disabled={actionLoading === userMeeting.id}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <UserMinus className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500 dark:text-gray-400">No participants yet</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                Click "Add User" to add participants to this session
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={isAddUserOpen} onOpenChange={(open) => {
         setIsAddUserOpen(open);

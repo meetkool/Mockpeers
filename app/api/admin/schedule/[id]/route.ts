@@ -25,7 +25,11 @@ export async function GET(
       where: { id },
       include: {
         userMeetings: {
-          include: {
+          select: {
+            id: true,
+            status: true,
+            joinedAt: true,
+            experienceLevel: true,
             user: {
               select: {
                 id: true,
@@ -33,6 +37,7 @@ export async function GET(
                 email: true,
                 phoneNumber: true,
                 country: true,
+                leetcodeUsername: true,
               }
             }
           }
