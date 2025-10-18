@@ -18,8 +18,8 @@ export async function GET(
     // Await params in Next.js 15+
     const { id } = await params;
 
-    // Run lifecycle checks to update statuses
-    await runLifecycleChecks().catch(err => console.error('Lifecycle check failed:', err));
+    // Run lifecycle checks in background (non-blocking)
+    runLifecycleChecks().catch(err => console.error('Lifecycle check failed:', err));
 
     const schedule = await prisma.schedule.findUnique({
       where: { id },

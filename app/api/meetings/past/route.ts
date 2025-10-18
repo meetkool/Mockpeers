@@ -18,9 +18,9 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '5'), 50); // Max 50 per page
     const skip = (page - 1) * limit;
 
-    // Run lifecycle checks to update meeting statuses
-    console.log('🔄 Running lifecycle checks before fetching past meetings...');
-    await runLifecycleChecks().catch(err => {
+    // Run lifecycle checks in background (non-blocking)
+    console.log('🔄 Running lifecycle checks in background...');
+    runLifecycleChecks().catch(err => {
       console.error('❌ Lifecycle check failed:', err);
     });
 

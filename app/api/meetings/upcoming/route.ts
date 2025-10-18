@@ -12,11 +12,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Run lifecycle checks to update meeting statuses
-    console.log('🔄 Running lifecycle checks before fetching upcoming meetings...');
-    await runLifecycleChecks().catch(err => {
+    // Run lifecycle checks in background (non-blocking)
+    console.log('🔄 Running lifecycle checks in background...');
+    runLifecycleChecks().catch(err => {
       console.error('❌ Lifecycle check failed:', err);
-      // Continue even if lifecycle check fails
     });
 
     const upcomingMeetings = await prisma.userMeeting.findMany({

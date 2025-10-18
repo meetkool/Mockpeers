@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [selectedInterviewType, setSelectedInterviewType] = useState<InterviewType | 'ALL'>('ALL');
+  const hasInitiallyFetched = useRef(false);
 
   // Fetch user profile to check phone verification status
   useEffect(() => {
@@ -129,7 +130,14 @@ export default function Dashboard() {
   // Fetch upcoming interviews on mount and poll every 10 seconds for real-time updates
   useEffect(() => {
     if (session?.user) {
-      fetchUpcomingInterviews(true); // Show loader on initial fetch
+      // Only show loader on very first fetch
+      if (!hasInitiallyFetched.current) {
+        fetchUpcomingInterviews(true);
+        hasInitiallyFetched.current = true;
+      } else {
+        // On subsequent runs (tab switches), fetch silently
+        fetchUpcomingInterviews(false);
+      }
       
       // Poll for updates every 10 seconds for real-time responsiveness
       const pollInterval = setInterval(() => {

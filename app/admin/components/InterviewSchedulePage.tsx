@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSchedules, useCloseBooking, useReopenBooking } from '@/lib/hooks/useSchedules';
+import { ScheduleTableSkeleton } from './ScheduleTableSkeleton';
 import {
   Table,
   TableBody,
@@ -21,6 +23,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format, differenceInMinutes } from "date-fns";
 import { Users, ArrowRight, RefreshCw, Ban } from "lucide-react";
 import { toast } from "sonner";
@@ -97,8 +106,8 @@ export function InterviewSchedulePage({
   iconName 
 }: InterviewSchedulePageProps) {
   const router = useRouter();
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [formData, setFormData] = useState<ScheduleFormData>({
     title: '',
     startTime: '',
@@ -107,24 +116,21 @@ export function InterviewSchedulePage({
     interviewType: interviewType,
   });
 
-  const fetchSchedules = async () => {
-    try {
-      const response = await fetch(`/api/admin/schedules/${interviewType}`);
-      const data = await response.json();
-      const schedulesWithUserMeetings = data.map((schedule: Schedule) => ({
-        ...schedule,
-        userMeetings: schedule.userMeetings || []
-      }));
-      setSchedules(schedulesWithUserMeetings);
-    } catch (error) {
-      console.error('Failed to fetch schedules:', error);
-      setSchedules([]);
-    }
-  };
+  // Use React Query hooks with pagination (now using manual pagination, not useInfiniteQuery)
+  const { 
+    data, 
+    isLoading, 
+    isError, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage,
+    refetch 
+  } = useSchedules(interviewType, statusFilter);
+  const closeBooking = useCloseBooking();
+  const reopenBooking = useReopenBooking();
 
-  useEffect(() => {
-    fetchSchedules();
-  }, [interviewType]);
+  // Flatten paginated data - with extra safety checks
+  const schedules = data?.pages?.flatMap(page => page?.items || []) ?? [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,7 +143,7 @@ export function InterviewSchedulePage({
 
       if (response.ok) {
         setIsOpen(false);
-        fetchSchedules();
+        refetch();  // Use refetch instead of fetchSchedules
         setFormData({
           title: '',
           startTime: '',
@@ -157,40 +163,31 @@ export function InterviewSchedulePage({
     router.push(`/rooms/${scheduleId}`);
   };
 
-  const handleReopenBooking = async (scheduleId: string) => {
-    try {
-      const res = await fetch(`/api/admin/schedule/${scheduleId}/reopen`, {
-        method: 'POST',
-      });
-
-      if (!res.ok) throw new Error('Failed to reopen booking');
-
-      toast.success('Booking reopened successfully');
-      fetchSchedules();
-    } catch (error) {
-      console.error('Failed to reopen booking:', error);
-      toast.error('Failed to reopen booking');
-    }
+  const handleReopenBooking = (scheduleId: string) => {
+    reopenBooking.mutate(scheduleId);
   };
 
-  const handleCloseBooking = async (scheduleId: string) => {
-    try {
-      const res = await fetch(`/api/admin/schedule/${scheduleId}/close`, {
-        method: 'POST',
-      });
-
-      if (!res.ok) throw new Error('Failed to close booking');
-
-      toast.success('Booking closed successfully');
-      fetchSchedules();
-    } catch (error) {
-      console.error('Failed to close booking:', error);
-      toast.error('Failed to close booking');
-    }
+  const handleCloseBooking = (scheduleId: string) => {
+    closeBooking.mutate(scheduleId);
   };
 
   const config = INTERVIEW_TYPE_CONFIG[interviewType];
   const Icon = iconMap[iconName as keyof typeof iconMap];
+
+  if (isLoading) {
+    return <ScheduleTableSkeleton />;
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">Failed to load schedules</p>
+          <Button onClick={() => refetch()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -202,11 +199,26 @@ export function InterviewSchedulePage({
             <p className="text-muted-foreground">{description}</p>
           </div>
         </div>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button>Create New {config.name} Schedule</Button>
-          </DialogTrigger>
-          <DialogContent>
+        <div className="flex gap-3 items-center">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Statuses</SelectItem>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="BOOKING_STARTED">Booking Started</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="DONE">Done</SelectItem>
+              <SelectItem value="OVER">Over</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button>Create New {config.name} Schedule</Button>
+            </DialogTrigger>
+            <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New {config.name} Schedule</DialogTitle>
             </DialogHeader>
@@ -248,8 +260,9 @@ export function InterviewSchedulePage({
               </div>
               <Button type="submit" className="w-full">Create {config.name} Schedule</Button>
             </form>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Table>
@@ -284,7 +297,7 @@ export function InterviewSchedulePage({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => router.push(`/admin/schedule/${interviewType.toLowerCase()}/${schedule.id}`)}
+                      onClick={() => router.push(`/admin/schedule/${interviewType.toLowerCase().replace(/_/g, '-')}/${schedule.id}`)}
                     >
                       <Users className="h-4 w-4 mr-1" />
                       Manage
@@ -325,6 +338,38 @@ export function InterviewSchedulePage({
           })}
         </TableBody>
       </Table>
+
+      {/* Load More Button */}
+      {hasNextPage && (
+        <div className="flex justify-center mt-6">
+          <Button
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            variant="outline"
+            size="lg"
+          >
+            {isFetchingNextPage ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Loading more...
+              </>
+            ) : (
+              <>
+                Load More Schedules
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* Show count */}
+      {schedules.length > 0 && (
+        <div className="text-center text-sm text-gray-500 mt-4">
+          Showing {schedules.length} schedules
+          {isFetchingNextPage && <span className="ml-2">• Loading more...</span>}
+        </div>
+      )}
     </div>
   );
 }

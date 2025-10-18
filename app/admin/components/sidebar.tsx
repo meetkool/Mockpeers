@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from '@tanstack/react-query';
 import {
   LayoutDashboard,
   Users,
@@ -97,6 +98,41 @@ const sidebarItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
+
+  // Prefetch helper
+  const prefetchPage = (href: string) => {
+    // Extract interview type from href
+    if (href.includes('/schedule/')) {
+      const typeMatch = href.match(/\/schedule\/([^/]+)/);
+      if (typeMatch) {
+        const routeType = typeMatch[1];
+        
+        // Map route to API type
+        const typeMap: Record<string, string> = {
+          'dsa': 'DSA',
+          'system-design': 'SYSTEM_DESIGN',
+          'behavioral': 'BEHAVIORAL',
+          'sql': 'SQL',
+          'data-science': 'DATA_SCIENCE',
+          'frontend': 'FRONTEND',
+        };
+        
+        const apiType = typeMap[routeType];
+        if (apiType) {
+          queryClient.prefetchQuery({
+            queryKey: ['schedules', apiType, 'ALL'],
+            queryFn: () => fetch(`/api/admin/schedules/${apiType}`).then(r => r.json()),
+          });
+        }
+      }
+    } else if (href === '/admin/users') {
+      queryClient.prefetchQuery({
+        queryKey: ['users'],
+        queryFn: () => fetch('/api/admin/users').then(r => r.json()),
+      });
+    }
+  };
 
   const handleSignOut = () => {
     signOut({ callbackUrl: '/admin/login' });
@@ -126,6 +162,8 @@ export function Sidebar() {
               )}
               <Link
                 href={item.href}
+                onMouseEnter={() => prefetchPage(item.href)}
+                onTouchStart={() => prefetchPage(item.href)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors",
                   isActive &&

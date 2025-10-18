@@ -1,6 +1,8 @@
 {
-  "crons": [{
-    "path": "/api/schedule/status-update",
-    "schedule": "*/15 * * * *"
-  }]
+  "crons": [
+    {
+      "path": "/api/cron/lifecycle",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

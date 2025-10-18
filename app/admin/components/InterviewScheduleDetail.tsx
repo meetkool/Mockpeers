@@ -8,13 +8,23 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { format, differenceInMinutes } from "date-fns";
-import { ArrowLeft, ArrowRight, RefreshCw, Ban, UserPlus, UserMinus } from "lucide-react";
+import { ArrowLeft, ArrowRight, RefreshCw, Ban, UserPlus, UserMinus, Code, Network, MessageSquare, Database, Brain, Monitor } from "lucide-react";
 import { toast } from "sonner";
 import { 
   InterviewType, 
   INTERVIEW_TYPE_CONFIG, 
   Schedule 
 } from "@/lib/types/interview-types";
+
+// Icon mapping
+const iconMap = {
+  'Code': Code,
+  'Network': Network,
+  'MessageSquare': MessageSquare,
+  'Database': Database,
+  'Brain': Brain,
+  'Monitor': Monitor,
+} as const;
 
 interface InterviewScheduleDetailProps {
   interviewType: InterviewType;
@@ -76,14 +86,32 @@ export function InterviewScheduleDetail({
   const [selectedExperienceLevel, setSelectedExperienceLevel] = useState<'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'>('BEGINNER');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const config = INTERVIEW_TYPE_CONFIG[interviewType];
+  const Icon = iconMap[config.icon as keyof typeof iconMap];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsUserDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const fetchSchedule = async () => {
     try {
       const response = await fetch(`/api/admin/schedule/${scheduleId}`);
       if (response.ok) {
-        const data = await response.json();
+        const data: Schedule = await response.json();
         setSchedule(data);
       }
     } catch (error) {
@@ -121,8 +149,10 @@ export function InterviewScheduleDetail({
 
       if (!res.ok) throw new Error('Failed to reopen booking');
 
+      // Refresh schedule data to show updated status immediately
+      await fetchSchedule();
+      
       toast.success('Booking reopened successfully');
-      fetchSchedule();
     } catch (error) {
       console.error('Failed to reopen booking:', error);
       toast.error('Failed to reopen booking');
@@ -141,8 +171,10 @@ export function InterviewScheduleDetail({
 
       if (!res.ok) throw new Error('Failed to close booking');
 
+      // Refresh schedule data to show updated status immediately
+      await fetchSchedule();
+      
       toast.success('Booking closed successfully');
-      fetchSchedule();
     } catch (error) {
       console.error('Failed to close booking:', error);
       toast.error('Failed to close booking');
@@ -161,8 +193,10 @@ export function InterviewScheduleDetail({
 
       if (!res.ok) throw new Error('Failed to end meeting');
 
+      // Refresh schedule data to show updated status immediately
+      await fetchSchedule();
+      
       toast.success('Meeting ended successfully');
-      fetchSchedule();
     } catch (error) {
       console.error('Failed to end meeting:', error);
       toast.error('Failed to end meeting');
@@ -184,18 +218,65 @@ export function InterviewScheduleDetail({
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to add user');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to add user');
+      }
 
+      // Refresh schedule data to show new participant immediately
+      await fetchSchedule();
+      
       toast.success('User added successfully');
-      fetchSchedule();
       setIsAddUserOpen(false);
       setSelectedUserId('');
-    } catch (error) {
+      setUserSearchQuery('');
+      setIsUserDropdownOpen(false);
+    } catch (error: any) {
       console.error('Failed to add user:', error);
-      toast.error('Failed to add user');
+      toast.error(error.message || 'Failed to add user');
     } finally {
       setActionLoading(null);
     }
+  };
+
+  // Get IDs of users already added to this schedule
+  const addedUserIds = new Set(
+    schedule?.userMeetings?.map((um) => um.user.id) || []
+  );
+
+  // Filter users based on search query and exclude already added users
+  const filteredUsers = users.filter((user) => {
+    // Exclude users who are already added
+    if (addedUserIds.has(user.id)) {
+      return false;
+    }
+    
+    const query = userSearchQuery.toLowerCase();
+    return (
+      user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query)
+    );
+  });
+
+  // Check if search matches an already-added user
+  const searchMatchesAddedUser = userSearchQuery.length >= 2 && users.some((user) => {
+    const query = userSearchQuery.toLowerCase();
+    return (
+      addedUserIds.has(user.id) && 
+      (user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query))
+    );
+  });
+
+  // Get selected user details for display
+  const selectedUser = users.find(u => u.id === selectedUserId);
+
+  const handleSelectUser = (userId: string) => {
+    setSelectedUserId(userId);
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      setUserSearchQuery(user.name);
+    }
+    setIsUserDropdownOpen(false);
   };
 
   const handleRemoveUser = async (userMeetingId: string) => {
@@ -208,8 +289,10 @@ export function InterviewScheduleDetail({
 
       if (!res.ok) throw new Error('Failed to remove user');
 
+      // Refresh schedule data to update participant list immediately
+      await fetchSchedule();
+      
       toast.success('User removed successfully');
-      fetchSchedule();
     } catch (error) {
       console.error('Failed to remove user:', error);
       toast.error('Failed to remove user');
@@ -316,7 +399,7 @@ export function InterviewScheduleDetail({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <config.icon className="h-5 w-5" />
+              <Icon className="h-5 w-5" />
               {config.name} Schedule Details
             </CardTitle>
           </CardHeader>
@@ -417,8 +500,15 @@ export function InterviewScheduleDetail({
         </Card>
       </div>
 
-      <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-        <DialogContent>
+      <Dialog open={isAddUserOpen} onOpenChange={(open) => {
+        setIsAddUserOpen(open);
+        if (!open) {
+          setUserSearchQuery('');
+          setSelectedUserId('');
+          setIsUserDropdownOpen(false);
+        }
+      }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add User to {config.name} Session</DialogTitle>
             <DialogDescription>
@@ -428,18 +518,93 @@ export function InterviewScheduleDetail({
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium">Select User</label>
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full p-2 border rounded-md"
-              >
-                <option value="">Choose a user...</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </select>
+              <div className="mt-1 relative" ref={dropdownRef}>
+                <Input
+                  type="text"
+                  placeholder="Type at least 2 characters to search users..."
+                  value={userSearchQuery}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setUserSearchQuery(value);
+                    // Only open dropdown if user has typed at least 2 characters
+                    if (value.length >= 2) {
+                      setIsUserDropdownOpen(true);
+                    } else {
+                      setIsUserDropdownOpen(false);
+                      if (value.length === 0) {
+                        setSelectedUserId('');
+                      }
+                    }
+                  }}
+                  className="w-full"
+                  autoComplete="off"
+                />
+                
+                {/* Helper text */}
+                {userSearchQuery.length > 0 && userSearchQuery.length < 2 && (
+                  <p className="text-xs text-gray-500 mt-1">Type one more character to search...</p>
+                )}
+                
+                {/* Dropdown List - Only show when user has typed at least 2 characters */}
+                {isUserDropdownOpen && userSearchQuery.length >= 2 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {filteredUsers.length > 0 ? (
+                      <div className="py-1">
+                        <div className="px-3 py-1 text-xs text-gray-500 border-b dark:border-gray-700">
+                          {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} found
+                        </div>
+                        {filteredUsers.map((user) => (
+                          <div
+                            key={user.id}
+                            onClick={() => handleSelectUser(user.id)}
+                            className={`px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                              selectedUserId === user.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                            }`}
+                          >
+                            <div className="font-medium text-sm">{user.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{user.email}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-3 py-4 text-center text-sm text-gray-500">
+                        {searchMatchesAddedUser ? (
+                          <>
+                            <p className="font-medium">User already added to this session</p>
+                            <p className="text-xs mt-1">This user is already a participant</p>
+                          </>
+                        ) : (
+                          <>No users found matching "{userSearchQuery}"</>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Selected User Display */}
+                {selectedUser && !isUserDropdownOpen && (
+                  <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-medium">{selectedUser.name}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">{selectedUser.email}</div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedUserId('');
+                          setUserSearchQuery('');
+                        }}
+                        className="h-6 w-6 p-0"
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium">Experience Level</label>

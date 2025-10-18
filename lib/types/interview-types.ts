@@ -105,6 +105,7 @@ export interface Schedule {
   interviewType: InterviewType;
   userMeetings: {
     id: string;
+    experienceLevel?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
     user: {
       id: string;
       name: string;

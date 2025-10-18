@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
 
-    // Run lifecycle checks to update statuses
-    await runLifecycleChecks().catch(err => console.error('Lifecycle check failed:', err));
+    // Run lifecycle checks in background (non-blocking)
+    runLifecycleChecks().catch(err => console.error('Lifecycle check failed:', err));
 
     // Fetch all schedules (no filtering by status or time)
     const schedules = await prisma.schedule.findMany({

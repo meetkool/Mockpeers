@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
+import { useUsers } from "@/lib/hooks/useUsers";
+import { UsersTableSkeleton } from "../components/UsersTableSkeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,40 +46,20 @@ interface User {
 }
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  // Use React Query hook
+  const { data: users = [], isLoading, isError, refetch } = useUsers();
 
-  useEffect(() => {
-    const filtered = users.filter(user => 
+  // Memoize filtered users (only recalculate when dependencies change)
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => 
       user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.profession?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.country?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    setFilteredUsers(filtered);
   }, [users, searchTerm]);
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/admin/users');
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data);
-      } else {
-        console.error('Failed to fetch users');
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -102,12 +84,17 @@ export default function AdminUsersPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
+    return <UsersTableSkeleton />;
+  }
+
+  if (isError) {
     return (
       <div className="space-y-8">
         <h1 className="text-3xl font-bold">Users Management</h1>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading users...</div>
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">Failed to load users</p>
+          <Button onClick={() => refetch()}>Retry</Button>
         </div>
       </div>
     );
