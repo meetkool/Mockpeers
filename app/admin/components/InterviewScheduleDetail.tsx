@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { format, differenceInMinutes } from "date-fns";
-import { ArrowLeft, ArrowRight, RefreshCw, Ban, UserPlus, UserMinus, Code, Network, MessageSquare, Database, Brain, Monitor } from "lucide-react";
+import { ArrowLeft, ArrowRight, RefreshCw, Ban, UserPlus, UserMinus, Code, Network, MessageSquare, Database, Brain, Monitor, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { 
   InterviewType, 
@@ -567,16 +567,28 @@ export function InterviewScheduleDetail({
                           </div>
                         </div>
                       </td>
-                      <td className="p-4 text-center">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRemoveUser(userMeeting.id)}
-                          disabled={actionLoading === userMeeting.id}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        >
-                          <UserMinus className="h-4 w-4" />
-                        </Button>
+                      <td className="p-4">
+                        <div className="flex items-center justify-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.push(`/admin/users/${userMeeting.user.id}`)}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            title="View User Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRemoveUser(userMeeting.id)}
+                            disabled={actionLoading === userMeeting.id}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            title="Remove User"
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
