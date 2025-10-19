@@ -105,11 +105,16 @@ export interface Schedule {
   interviewType: InterviewType;
   userMeetings: {
     id: string;
+    status: string;
+    joinedAt: string;
     experienceLevel?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
     user: {
       id: string;
       name: string;
       email: string;
+      phoneNumber?: string | null;
+      country?: string | null;
+      leetcodeUsername?: string | null;
     };
   }[];
 }

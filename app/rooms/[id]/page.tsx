@@ -123,6 +123,31 @@ export default function RoomPage() {
     fetchMeetingDetails();
   }, [fetchMeetingDetails]);
 
+  // Track when user enters the room (update status to ACTIVE)
+  useEffect(() => {
+    const enterRoom = async () => {
+      try {
+        const response = await fetch(`/api/meetings/${params.id}/enter-room`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (response.ok) {
+          console.log('Successfully marked as active in room');
+          // Refresh meeting details to show updated status
+          fetchMeetingDetails();
+        }
+      } catch (error) {
+        console.error('Error entering room:', error);
+        // Don't show error to user - this is background tracking
+      }
+    };
+
+    if (params.id && !isLoading) {
+      enterRoom();
+    }
+  }, [params.id, isLoading, fetchMeetingDetails]);
+
   useEffect(() => {
     if (!schedule) return;
 
@@ -362,3 +387,4 @@ export default function RoomPage() {
     </div>
   );
 }
+
