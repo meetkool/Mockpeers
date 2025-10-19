@@ -44,6 +44,26 @@ export async function DELETE(
       where: { id: userMeetingId },
     });
 
+    // Update schedule counting
+    const updatedSchedule = await prisma.schedule.update({
+      where: { id: scheduleId },
+      data: {
+        counting: {
+          decrement: 1,
+        },
+      },
+    });
+
+    // If counting is now 0, revert status to PENDING
+    if (updatedSchedule.counting === 0 && updatedSchedule.status === 'BOOKING_STARTED') {
+      await prisma.schedule.update({
+        where: { id: scheduleId },
+        data: {
+          status: 'PENDING',
+        },
+      });
+    }
+
     return NextResponse.json(
       { message: 'User removed successfully' },
       { status: 200 }

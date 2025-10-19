@@ -84,6 +84,26 @@ export async function POST(
       },
     });
 
+    // Update schedule counting
+    const updatedSchedule = await prisma.schedule.update({
+      where: { id: scheduleId },
+      data: {
+        counting: {
+          increment: 1,
+        },
+      },
+    });
+
+    // If this is the first participant, change status from PENDING to BOOKING_STARTED
+    if (updatedSchedule.counting === 1 && updatedSchedule.status === 'PENDING') {
+      await prisma.schedule.update({
+        where: { id: scheduleId },
+        data: {
+          status: 'BOOKING_STARTED',
+        },
+      });
+    }
+
     return NextResponse.json(userMeeting, { status: 201 });
   } catch (error) {
     console.error('Failed to add user to schedule:', error);

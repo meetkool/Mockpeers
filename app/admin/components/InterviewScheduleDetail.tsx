@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { format, differenceInMinutes } from "date-fns";
-import { ArrowLeft, ArrowRight, RefreshCw, Ban, UserPlus, UserMinus, Code, Network, MessageSquare, Database, Brain, Monitor, Eye } from "lucide-react";
+import { ArrowLeft, ArrowRight, RefreshCw, Ban, UserPlus, UserMinus, Code, Network, MessageSquare, Database, Brain, Monitor, Eye, Play } from "lucide-react";
 import { toast } from "sonner";
 import { 
   InterviewType, 
@@ -72,6 +72,39 @@ const getBookingStatus = (schedule: Schedule) => {
   }
   
   return { isOpen: false, label: 'Closed', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
+};
+
+const getUserMeetingStatusBadge = (status: string) => {
+  const statusConfig = {
+    'JOINED': {
+      className: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400',
+      label: 'REGISTERED',
+      emoji: '📝'
+    },
+    'ACTIVE': {
+      className: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400',
+      label: 'IN ROOM',
+      emoji: '🟢'
+    },
+    'LEFT': {
+      className: 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400',
+      label: 'COMPLETED',
+      emoji: '✅'
+    },
+    'CANCELLED': {
+      className: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400',
+      label: 'NO-SHOW',
+      emoji: '❌'
+    }
+  };
+
+  const config = statusConfig[status as keyof typeof statusConfig] || {
+    className: 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400',
+    label: status,
+    emoji: '❓'
+  };
+
+  return config;
 };
 
 export function InterviewScheduleDetail({ 
@@ -205,6 +238,28 @@ export function InterviewScheduleDetail({
     }
   };
 
+  const handleStartMeeting = async () => {
+    if (!schedule) return;
+    setActionLoading('start');
+    try {
+      const res = await fetch(`/api/admin/schedule/${schedule.id}/start`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) throw new Error('Failed to start meeting');
+
+      // Refresh schedule data to show updated status immediately
+      await fetchSchedule();
+      
+      toast.success('Meeting started successfully');
+    } catch (error) {
+      console.error('Failed to start meeting:', error);
+      toast.error('Failed to start meeting');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleAddUser = async () => {
     if (!schedule || !selectedUserId) return;
     setActionLoading('add-user');
@@ -324,7 +379,7 @@ export function InterviewScheduleDetail({
           <h2 className="text-2xl font-bold text-gray-900">Schedule not found</h2>
           <p className="mt-2 text-gray-600">The schedule you're looking for doesn't exist.</p>
           <Button 
-            onClick={() => router.push(`/admin/schedule/${interviewType.toLowerCase()}`)}
+            onClick={() => router.push(config.path)}
             className="mt-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -348,7 +403,7 @@ export function InterviewScheduleDetail({
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            onClick={() => router.push(`/admin/schedule/${interviewType.toLowerCase()}`)}
+            onClick={() => router.push(config.path)}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to {config.name} Schedules
@@ -375,6 +430,17 @@ export function InterviewScheduleDetail({
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               {actionLoading === 'reopen' ? 'Reopening...' : 'Reopen Booking'}
+            </Button>
+          )}
+          {(schedule.status === 'PENDING' || schedule.status === 'BOOKING_STARTED') && (
+            <Button
+              variant="outline"
+              onClick={handleStartMeeting}
+              disabled={actionLoading === 'start'}
+              className="bg-green-50 hover:bg-green-100 text-green-700"
+            >
+              <Play className="h-4 w-4 mr-2" />
+              {actionLoading === 'start' ? 'Starting...' : 'Start Meeting'}
             </Button>
           )}
           {(schedule.status === 'ACTIVE' || schedule.status === 'BOOKING_STARTED') && (
@@ -550,13 +616,10 @@ export function InterviewScheduleDetail({
                       <td className="p-4">
                         <Badge 
                           variant="outline"
-                          className={
-                            userMeeting.status === 'JOINED'
-                              ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400'
-                              : 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-400'
-                          }
+                          className={getUserMeetingStatusBadge(userMeeting.status).className}
                         >
-                          {userMeeting.status}
+                          <span className="mr-1">{getUserMeetingStatusBadge(userMeeting.status).emoji}</span>
+                          {getUserMeetingStatusBadge(userMeeting.status).label}
                         </Badge>
                       </td>
                       <td className="p-4">
